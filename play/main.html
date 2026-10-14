@@ -1940,6 +1940,7 @@
             } else {
                 animal.status = "injured";
                 animal.injuredSinceRound = GameState.round;
+                animal.injuredRounds = 0;
                 this.recordStory(`第 ${GameState.round} 回合：${animal.name} 被野狼抓傷，留下了需要救治的傷口。`);
                 this.showToast(`警告：${animal.name} 遭到野狼抓傷，急需救回紅農舍！`);
             }
@@ -1956,16 +1957,25 @@
                 const victim = healthy[Math.floor(Math.random() * healthy.length)];
                 victim.status = "injured";
                 victim.injuredSinceRound = GameState.round;
+                victim.injuredRounds = 0;
                 this.showToast(`${victim.name} 在晨巡時發現負傷，請盡快送回紅農舍救治！`);
             }
         },
 
         expireUntreatedInjuries() {
-            const overdue = GameState.animals.filter(a =>
-                a.status === "injured" &&
-                Number.isFinite(a.injuredSinceRound) &&
-                GameState.round - a.injuredSinceRound >= 2
-            );
+            const overdue = [];
+            GameState.animals.forEach(animal => {
+                if (animal.status !== "injured") return;
+                // Count completed dawns explicitly so the rule cannot fail when a
+                // status was created by an older event without a round number.
+                animal.injuredRounds = Number.isFinite(animal.injuredRounds)
+                    ? animal.injuredRounds + 1
+                    : 1;
+                const roundLimitReached = animal.injuredRounds >= 2;
+                const legacyLimitReached = Number.isFinite(animal.injuredSinceRound) &&
+                    GameState.round - animal.injuredSinceRound >= 2;
+                if (roundLimitReached || legacyLimitReached) overdue.push(animal);
+            });
             overdue.forEach(animal => {
                 animal.status = "dead";
                 animal.isCarried = false;
@@ -2198,9 +2208,11 @@
             } else {
                 injured.forEach(animal => {
                     const button = document.createElement("button");
-                    const waitedRounds = Number.isFinite(animal.injuredSinceRound)
-                        ? Math.max(0, GameState.round - animal.injuredSinceRound)
-                        : 0;
+                    const waitedRounds = Number.isFinite(animal.injuredRounds)
+                        ? animal.injuredRounds
+                        : (Number.isFinite(animal.injuredSinceRound)
+                            ? Math.max(0, GameState.round - animal.injuredSinceRound)
+                            : 0);
                     const remainingRounds = Math.max(0, 2 - waitedRounds);
                     button.innerText = `${animal.name}　｜再 ${remainingRounds} 回合未治療將死亡`;
                     button.addEventListener("click", () => beginAutoRescue(animal));
@@ -2321,6 +2333,7 @@
                 // Relocate to safe farmhouse
                 animal.status = "normal";
                 animal.injuredSinceRound = null;
+                animal.injuredRounds = null;
                 animal.x = GameState.farmhousePos.x + (Math.random() - 0.5) * 2;
                 animal.z = GameState.farmhousePos.z + 2.5 + Math.random();
 
@@ -2565,6 +2578,7 @@
                     if (shelterDistance <= 2.2) {
                         autoRescueTarget.status = "normal";
                         autoRescueTarget.injuredSinceRound = null;
+                        autoRescueTarget.injuredRounds = null;
                         autoRescueTarget.x = GameState.farmhousePos.x + (Math.random() - 0.5) * 1.5;
                         autoRescueTarget.z = GameState.farmhousePos.z + 2.2 + Math.random();
                         const rescuedMesh = FarmWorld.animalMeshes[autoRescueTarget.id];
