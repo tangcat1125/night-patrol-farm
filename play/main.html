@@ -170,7 +170,7 @@
                     <div class="text-stone-400">恐慌受驚嚇:</div>
                     <div id="hud-panic-count" class="font-bold text-yellow-300 text-right">0 隻</div>
                     <div class="text-stone-400">巡守回合:</div>
-                    <div id="hud-round-count" class="font-bold text-sky-300 text-right">0 / 30</div>
+                    <div id="hud-round-count" class="font-bold text-sky-300 text-right">0 / 10</div>
                 </div>
             </div>
 
@@ -596,7 +596,7 @@
         nightDuration: 22,
         wolvesKilled: 0,
         round: 0,
-        maxRounds: 30,
+        maxRounds: 10,
         animalsDead: 0,
         wolvesNeeded: 4,
         maxDeadAllowed: 3,
@@ -1933,7 +1933,7 @@
 
             const story = GameState.storyLog.slice(-18).join("\n");
             if (isWin && ending === "rounds") {
-                title.innerText = "三十回合的和平農場：全員無傷！";
+                title.innerText = "十回合的和平農場：全員無傷！";
                 title.className = "text-2xl font-black mb-3 text-emerald-400";
                 desc.innerText = `你讓主人與動物們平安度過三十個日夜，沒有任何動物死傷。\n\n【農場故事紀錄】\n${story}`;
             } else if (isWin) {
