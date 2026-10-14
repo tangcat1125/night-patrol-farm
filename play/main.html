@@ -157,7 +157,7 @@
         #injured-list-panel { position: absolute; left: 1rem; top: 14rem; z-index: 20; width: min(22rem, calc(100vw - 2rem)); }
         #injured-list-panel button { width: 100%; text-align: left; padding: .65rem .8rem; margin-top: .35rem; border: 2px solid #f59e0b; border-radius: .45rem; background: #3b2418; color: #fff7ed; font-size: 1rem; font-weight: 900; }
         #injured-list-panel button:hover { background: #7c2d12; }
-        #clue-board { position: absolute; left: 1rem; top: 20rem; z-index: 19; width: min(23rem, calc(100vw - 2rem)); }
+        #clue-board { position: absolute; left: 1rem; top: 20rem; z-index: 19; width: min(23rem, calc(100vw - 2rem)); max-height: calc(100vh - 21rem); overflow-y: auto; pointer-events: auto; }
         #clue-board .clue-row { padding: .4rem .55rem; margin-top: .3rem; border-left: 4px solid #64748b; background: rgba(15,23,42,.78); color: #cbd5e1; font-size: .94rem; line-height: 1.45; }
         #clue-board .clue-row.found { border-left-color: #fbbf24; color: #fef3c7; background: rgba(92,52,12,.88); }
         #world-directions { position: absolute; inset: 0; z-index: 9; pointer-events: none; font-size: 1.08rem; font-weight: 900; color: #fff7ed; text-shadow: 0 2px 0 #29150e, 0 0 8px #29150e; }
@@ -237,12 +237,16 @@
         </div>
 
         <div id="clue-board" class="pointer-events-none pixel-box rounded-xl p-3 text-white">
-            <div class="text-sky-300 font-black text-lg border-b border-stone-700 pb-2">狼群方向線索</div>
-            <div id="clue-sheep" class="clue-row">黑鼻羊：尚未查明牠做過的壞事</div>
+            <div class="text-sky-300 font-black text-lg border-b border-stone-700 pb-2">防狼線索・五個網夾</div>
             <div id="clue-north" class="clue-row">北方：尚未查明</div>
             <div id="clue-west" class="clue-row">西方：尚未查明</div>
             <div id="clue-southeast" class="clue-row">東南方：尚未查明</div>
             <div id="clue-south" class="clue-row">南方：尚未查明</div>
+            <div class="text-amber-300 font-black text-lg border-b border-stone-700 pb-2 mt-3">黑鼻羊的謊言・證據</div>
+            <div id="clue-night-out" class="clue-row">昨夜行蹤：尚未查明</div>
+            <div id="clue-duck-shadow" class="clue-row">池塘怪影：尚未查明</div>
+            <div id="clue-crow-tracks" class="clue-row">空中足跡：尚未查明</div>
+            <div id="clue-sheep" class="clue-row">真相：還需要三份證詞，才能找黑鼻羊對質</div>
         </div>
 
         <!-- Help Notice & Mobile Dpad -->
@@ -402,6 +406,55 @@
             osc.start();
             osc.stop(this.ctx.currentTime + 0.4);
         },
+        playWolfHowl() {
+            this.init();
+            if (!this.ctx || this.ctx.state !== "running") return;
+            const now = this.ctx.currentTime;
+            const oscillator = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            oscillator.type = "sawtooth";
+            oscillator.frequency.setValueAtTime(155, now);
+            oscillator.frequency.linearRampToValueAtTime(290, now + 0.38);
+            oscillator.frequency.linearRampToValueAtTime(180, now + 1.15);
+            gain.gain.setValueAtTime(0.001, now);
+            gain.gain.linearRampToValueAtTime(0.13, now + 0.18);
+            gain.gain.linearRampToValueAtTime(0.001, now + 1.2);
+            oscillator.connect(gain);
+            gain.connect(this.ctx.destination);
+            oscillator.start(now);
+            oscillator.stop(now + 1.2);
+        },
+        playWolfRun() {
+            this.init();
+            if (!this.ctx || this.ctx.state !== "running") return;
+            const now = this.ctx.currentTime;
+            for (let i = 0; i < 3; i++) {
+                const oscillator = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                oscillator.type = "triangle";
+                oscillator.frequency.setValueAtTime(95, now + i * 0.13);
+                oscillator.frequency.exponentialRampToValueAtTime(48, now + i * 0.13 + 0.08);
+                gain.gain.setValueAtTime(0.055, now + i * 0.13);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.13 + 0.09);
+                oscillator.connect(gain); gain.connect(this.ctx.destination);
+                oscillator.start(now + i * 0.13);
+                oscillator.stop(now + i * 0.13 + 0.1);
+            }
+        },
+        playWolfRetreat() {
+            this.init();
+            if (!this.ctx || this.ctx.state !== "running") return;
+            const oscillator = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const now = this.ctx.currentTime;
+            oscillator.type = "triangle";
+            oscillator.frequency.setValueAtTime(260, now);
+            oscillator.frequency.exponentialRampToValueAtTime(80, now + 0.35);
+            gain.gain.setValueAtTime(0.11, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+            oscillator.connect(gain); gain.connect(this.ctx.destination);
+            oscillator.start(now); oscillator.stop(now + 0.36);
+        },
         playCycleShift(isNight) {
             this.init();
             if (!this.ctx) return;
@@ -422,201 +475,30 @@
     };
     </script>
 
+    <script src="../dialogues/bundle.js"></script>
     <script>
-    const DIALOGUES_DATA = {
-        sheep: {
-            name: "羊",
-            problem: "黑鼻羊貝克曾反覆謊稱狼來了，大家因此不再相信牠；如今牠其實是因罪惡感與恐懼而持續造謠。",
-            truth: "牠不是英勇打敗野狼，而是在北邊臭水溝跌倒受傷，害怕被大家嘲笑才說謊。",
-            wolfLocations: ["北邊臭水溝", "西邊木門", "東南矮圍牆", "南邊廢果園"],
-            wolfClue: { key: "north", text: "線索：野狼會從北方的臭水溝進入農場。" },
-            nextCharacter: "cow",
-            normal: [
-                "哎喲……痛痛痛！我才沒事呢！我可是上次幫大家解決牧草危機的羊！",
-                "我這條腿是昨晚在樹林裡跟大野狼打架弄傷的！我一腳就把牠踢飛了，牠們今晚要從東門衝進來，大家快去東邊！"
-            ],
-            rumor_spread: "牛！連我都差點受重傷，大野狼真的很可怕，你今晚千萬不能留在空地上！",
-            panicked: [
-                "（小聲自言自語）慘了……大家怎麼全部當真了！我昨晚只是偷溜去後山摘甜莓果跌進臭水溝而已啊……"
-            ],
-            injured: "嗚嗚嗚……好痛喔！這次不是扭傷，是真的有黑影咬我！快帶我回紅農舍擦藥！",
-            post_rescue: "對不起……我怕大家笑我，才說謊跟狼打架……我其實是在「北邊臭水溝」摔傷的，那裡的泥巴上真的有野狼的腳印！"
-        },
-        pig: {
-            name: "豬",
-            nextCharacter: "dog",
-            wolfClue: { key: "southeast", text: "線索：東南方的矮圍牆破了一個洞，野狼可能從那裡鑽進來。" },
-            suspicious: [
-                "呼嚕……等等，羊每次都說狼在不同地方，泥坑、池塘、東邊柵欄怎麼可能同時都有狼？",
-                "我開始懷疑羊了。牠說得越急，大家就越不敢靠近那些地方。"
-            ],
-            normal: [
-                "呼嚕嚕……上次草不夠吃，多虧羊幫忙算分配，大家才沒挨餓。",
-                "連那麼聰明的羊都被野狼打傷，外面的野狼一定超級兇對不對？"
-            ],
-            panicked: [
-                "哇啊啊！羊說狼要從東門打過來了！羊說的一定沒錯！大家快逃啊！",
-                "走開走開！我要挖個泥巴洞把自己藏起來，我才不要被狼抓走！"
-            ],
-            comforted: "呼……拍拍肚子。你說羊剛才講話眼睛在亂飄？咦……不過昨晚菜園旁邊的「東南矮圍牆」確實破了個大洞呢。",
-            injured: "痛痛痛！我的小尾巴被咬到了啦！走不動了，快送我去紅農舍！",
-            post_rescue: "農舍好溫暖喔。雖然羊很聰明，但昨晚的聲音真的在「東南矮圍牆」那邊，大鐵夾放那裡就對了！"
-        },
-        cow: {
-            name: "牛",
-            nextCharacter: "horse",
-            suspicious: ["哞……羊說的路線一直變來變去，我們是不是應該先查證，而不是跟著牠跑？"],
-            normal: [
-                "哞～上次沒有牧草時，多虧羊想辦法，大家都很謝謝牠。",
-                "看牠一跛一跛的真讓人心疼，到底是什麼壞野狼把牠打傷的？"
-            ],
-            panicked: [
-                "哞嗷嗷！羊剛才親口跟我說大野狼要來了！連羊都這麼說，今晚一定大難臨頭了！",
-                "你們別靠近我，我要把草棚的大門全部用稻草堵死！"
-            ],
-            comforted: "呼……深呼吸一下。你說得對，羊有時候也是會愛面子的。我昨晚聞到的臭味確實是從「北邊樹林」飄過來的！",
-            injured: "哎唷……腿被抓傷了，站不起來了……快扶我進紅農舍……",
-            post_rescue: "謝謝你幫我包紮。北邊小路又窄又臭，把大鐵夾放路中間，大野狼一定踩上去！"
-        },
-        horse: {
-            name: "馬",
-            nextCharacter: "dog",
-            normal: [
-                "嘶——！羊上次規劃的運草路線很厲害，我很佩服牠！",
-                "不過牠說牠踢飛了野狼？奇怪了，論踢腿全農場誰能踢得過我？牠哪時候學會後踢的？"
-            ],
-            panicked: [
-                "嘶！羊說大野狼跑得比我還要快十倍！那我怎麼跑得贏啦？！",
-                "不要站在我後面！我現在很緊張，隨時會踢人喔！"
-            ],
-            comforted: "呼嚕嚕……摸摸鬃毛好多了。我就說嘛，哪有狼跑那麼快的！聽好囉，「西邊草地」那邊風很大，牠們會順風衝過來！",
-            injured: "腳好痛喔……馬蹄鐵掉了，跑不動了啦……",
-            post_rescue: "多虧有繃帶綁好！在西邊草地的小木橋上放獸夾，野狼順風衝過來絕對煞不住車！"
-        },
-        dog: {
-            name: "狗",
-            nextCharacter: "cat",
-            wolfClue: { key: "west", text: "線索：西方木門下方有狼味，野狼可能從西門突入。" },
-            suspicious: ["汪！我守門這麼久，沒聞到泥坑和池塘都有狼味。羊的說法很可疑！"],
-            normal: [
-                "汪汪！我很敬佩羊解決過牧草危機，但巡邏是我的工作！",
-                "牠今天走路怪怪的，說是跟狼打架……可我怎麼聞到牠後腿有一股臭水溝泥巴味道啊？"
-            ],
-            panicked: [
-                "嗚嗚……汪！大家把羊的話當真，全擠在東門，西門根本沒人顧！我一隻狗怎麼看守啦！",
-                "大家冷靜一點！聽我看守的經驗好不好！"
-            ],
-            comforted: "汪！謝謝你願意聽我說！羊太愛面子了，不好意思承認自己跌倒啦。「西邊木門」下面有個破洞，那裡真的有狼味！",
-            injured: "嗷嗚……鼻子被抓了一把，流血了啦……快帶我去紅農舍擦藥……",
-            post_rescue: "汪！精神來了！羊也是怕丟臉才吹牛的，大家別怪牠，今晚我們一起抓野狼！"
-        },
-        cat: {
-            name: "貓",
-            nextCharacter: "crow",
-            normal: [
-                "喵～曬太陽真舒服。羊上次幫我在穀倉留了好位子，牠是隻好羊。",
-                "不過受傷就要老實擦藥，逞強裝沒事，身上的味道只會把真正的野狼引過來喔。"
-            ],
-            panicked: [
-                "喵嗷——！全場都在傳羊說的話，說今晚大家都要完蛋了，弄得我也好緊張！",
-                "嘶——！別吵我！我在練習磨爪子防身！"
-            ],
-            comforted: "呼嚕呼嚕……抓抓下巴真舒服。羊就是愛面子嘛。我剛才在屋頂上看到「西北邊枯井」旁邊有踩碎的樹枝喔！",
-            injured: "喵嗚……從樹上掉下來扭到手手了，不能跳了啦……",
-            post_rescue: "紅農舍的軟墊好舒服喔。西北枯井旁邊雜草很多，在那裡放夾子，野狼絕對看不見！"
-        },
-        chicken: {
-            name: "雞",
-            nextCharacter: "duck",
-            normal: [
-                "咕咕、咯咯！羊最照顧大家了，上次牧草不夠時，牠還幫忙勻出飼料給我們。",
-                "看到羊一跛一跛的，我都快哭了……野狼怎麼這麼壞啦！"
-            ],
-            panicked: [
-                "咯咯噠——！羊說大野狼要攻打東門，可是我的雞舍在最南邊耶！沒有大家保護我該怎麼辦啦！",
-                "不要抓我！我只是一顆長著羽毛的羽毛球！"
-            ],
-            comforted: "咯咯……呼，謝謝你抱住我。昨晚抓門的聲音真的在「南邊雞舍正後方」，那邊圍籬破了個洞！",
-            injured: "咕咕……羽毛被撕掉好多根，屁股好痛喔，走不動了……",
-            post_rescue: "咕咕噠！擦了藥好舒服喔！把夾子放在雞舍後面的小草堆裡，野狼想偷溜進來就會被夾住！"
-        },
-        duck: {
-            name: "鴨",
-            nextCharacter: "goose",
-            normal: [
-                "呱呱！羊上次教我們在乾旱時挖深水塘，牠好聰明喔！",
-                "羊說野狼好大一隻，我也想幫忙，但我只有兩隻短短的腳蹼……"
-            ],
-            panicked: [
-                "呱啊啊！大家都跟著羊往東門跑，水塘都被踩扁了！我不知道該躲去哪裡啦！",
-                "不要拉我的腳蹼！水裡有怪物啦！"
-            ],
-            comforted: "呱……摸摸羽毛好安心喔。大家太慌張了對不對？其實我昨天在「東邊水閘門」的淺水灘看到漂著幾根狼毛喔！",
-            injured: "呱嗚……腳蹼被石頭割破了，游不快了啦……",
-            post_rescue: "呱呱！農舍裡竟然有小碎玉米可以吃耶！把夾子藏在水閘門淺淺的水灘裡，野狼一定踩中！"
-        },
-        goose: {
-            name: "鵝",
-            nextCharacter: "crow",
-            normal: [
-                "浹——！頭抬高、胸部挺起來！雖然羊上次解決了牧草危機值得誇獎，但水塘還是我說了算！",
-                "牠說牠單挑野狼？哼，這話聽起來怪怪的，我看八成是自己跌倒嘴硬吧！"
-            ],
-            panicked: [
-                "浹浹浹！全場都在傳羊的戰鬥故事，把我的隊伍搞得亂七八糟！氣死我了！",
-                "退後！通通退後！誰敢靠近我就啄誰！"
-            ],
-            comforted: "哼……算你識相，還知道拿新鮮菜葉來安撫我。昨晚我確實看見黑影沿著「東北邊蘆葦叢」摸進來，注意那裡！",
-            injured: "哎唷……脖子被抓傷了，快點帶我去紅農舍！",
-            post_rescue: "咳咳……農舍的軟墊挺舒服的。東北蘆葦叢地上全是爛泥巴，在那裡放夾子，野狼陷進去絕對拔不出來！"
-        },
-        crow: {
-            name: "烏鴉",
-            nextCharacter: "sparrow",
-            normal: [
-                "嘎——嘎！平時最聰明的羊，今天怎麼像個鴨子一樣一扭一扭的？笑死我了！",
-                "我知道牠的秘密喔～但我不說！聰明的羊也有出糗的時候，嘻嘻！"
-            ],
-            panicked: [
-                "嘎啊！地上的笨蛋們全相信羊的東門作戰，把森林的野狼引暴躁了！枯樹都在搖晃啦！",
-                "樹要倒了！世界末日了！嘎嘎嘎！"
-            ],
-            comforted: "嘎……摸摸頭真舒服。看在你誠懇的份上：昨晚羊是溜去後山採野莓啦！但牠跌倒的「北邊水溝」，剛好就是野狼來的小路！",
-            injured: "撲稜撲稜……翅膀被樹枝拉傷了，掉在地上飛不起來啦……",
-            post_rescue: "嘎——！翅膀擦了亮晶晶藥膏真帥氣！天黑時野狼一定會從北邊水溝衝出來，在那裡放兩個大鐵夾！"
-        },
-        sparrow: {
-            name: "麻雀",
-            nextCharacter: "pigeon",
-            wolfClue: { key: "south", text: "線索：南方廢果園的草叢被壓倒，野狼可能從南邊靠近。" },
-            normal: [
-                "啾啾！羊最厲害了！上次沒有牧草時，全靠牠幫大家算好分量，我們才沒挨餓！",
-                "看到牠一跛一跛受傷，大家都好緊張喔，我也好想幫牠吹吹痛痛飛走！"
-            ],
-            panicked: [
-                "啾啾啾——！羊說野狼有一百隻！連果樹都要被啃光！那我住哪裡啦！",
-                "不要看我！我只是一顆毛線球，我很難吃喔！"
-            ],
-            comforted: "啾……摸摸小肚子好溫暖喔。羊每次緊張就會把數字誇大十倍，嘻嘻。不過「南邊廢果園」那邊真的有大腳印喔！",
-            injured: "啾嗚……小爪子被刺草扎破了，走不動了，好痛喔……",
-            post_rescue: "啾！農舍的小米真好吃！南邊果園有兩顆大石頭，中間的路窄窄的，把夾子放那裡剛剛好！"
-        },
-        pigeon: {
-            name: "鴿子",
-            nextCharacter: "sheep",
-            normal: [
-                "咕、咕、咕。羊這孩子是我們看著長大的，心腸好、腦子靈，就是自尊心強了點。",
-                "大家太相信牠了，所以牠說什麼大家就信什麼。這時候更需要冷靜下來看清真相啊。"
-            ],
-            panicked: [
-                "咕哇！全場動物都跟著羊在恐慌，我的心臟快受不了了！大家都盲目了啊！",
-                "咳咳咳！老骨頭經不起嚇啦！"
-            ],
-            comforted: "咕……喝口溫水順順氣。謝謝你。再聰明的孩子也是會犯錯的，別苛責牠。今晚野狼會從北渠、西門、東南、南果園四路過來，都要防守好。",
-            injured: "哎唷……老翅膀折到了，掉在穀倉旁邊動不了……",
-            post_rescue: "咕咕……感謝救命。把四個大夾子擺在四條小路正中央，就能打破三十年的恐懼詛咒囉！"
+    const DIALOGUES_DATA = window.FARM_DIALOGUES.animals;
+    const STORY_BRANCHES = window.FARM_DIALOGUES.branches;
+    async function loadDialogueJson() {
+        if (location.protocol === "file:") return; // bundle.js is the offline copy
+        try {
+            const ids = Object.keys(DIALOGUES_DATA);
+            const files = await Promise.all([
+                ...ids.map(id => fetch(`../dialogues/animals/${id}.json`, { cache: "no-cache" }).then(response => {
+                    if (!response.ok) throw Error(`Missing dialogue: ${id}`);
+                    return response.json();
+                })),
+                fetch("../dialogues/branches.json", { cache: "no-cache" }).then(response => {
+                    if (!response.ok) throw Error("Missing story branches");
+                    return response.json();
+                })
+            ]);
+            ids.forEach((id, index) => { DIALOGUES_DATA[id] = files[index]; });
+            Object.assign(STORY_BRANCHES, files[ids.length]);
+        } catch (error) {
+            console.warn("Using offline dialogue bundle:", error);
         }
-    };
+    }
     </script>
 
     <script>
@@ -639,10 +521,16 @@
         selectedAnimalId: null,
         nextGuideTargetId: null,
         discoveredClues: {},
+        evidence: {},
+        conversationSeen: {},
+        conversationCount: {},
+        dogPatrolActive: false,
+        crowGuardActive: false,
         pendingSheepDialogue: null,
         sheepRumorCount: 0,
         sheepSuspected: false,
         dogGuardNoticeRound: -1,
+        crowGuardUsedRound: -1,
         gameOver: false,
 
         // Player Character State
@@ -1365,6 +1253,7 @@
                 new THREE.MeshLambertMaterial({ color: 0x171717 })
             );
             head.position.set(0, 1.0, 0.7);
+            head.name = "WolfHead";
             head.castShadow = true;
             wolfGrp.add(head);
 
@@ -1399,12 +1288,35 @@
                 const dx = (i % 2 === 0) ? 0.3 : -0.3;
                 const dz = (i < 2) ? 0.5 : -0.5;
                 leg.position.set(dx, 0.22, dz);
+                leg.name = `WolfLeg${i}`;
                 leg.castShadow = true;
                 wolfGrp.add(leg);
             }
 
             this.scene.add(wolfGrp);
             this.wolfMeshes[id] = wolfGrp;
+        },
+
+        animateWolfPounce(wolf, target, onHit) {
+            const mesh = this.wolfMeshes[wolf.id];
+            if (!mesh) { onHit(); return; }
+            const startX = wolf.x, startZ = wolf.z;
+            const start = performance.now();
+            SoundAudio.playWolfAttack();
+            const frame = (now) => {
+                if (!this.wolfMeshes[wolf.id]) return;
+                const t = Math.min(1, (now - start) / 420);
+                const lunge = Math.sin(t * Math.PI) * 1.2;
+                const length = Math.max(0.01, Math.hypot(target.x - startX, target.z - startZ));
+                mesh.position.set(startX + (target.x - startX) / length * lunge,
+                    Math.sin(t * Math.PI) * 1.05,
+                    startZ + (target.z - startZ) / length * lunge);
+                mesh.rotation.y = Math.atan2(target.x - startX, target.z - startZ);
+                mesh.rotation.x = -Math.sin(t * Math.PI) * 0.3;
+                if (t < 1) requestAnimationFrame(frame);
+                else onHit();
+            };
+            requestAnimationFrame(frame);
         },
 
         removeWolf(id) {
@@ -1593,6 +1505,7 @@
                 GameState.round++;
                 GameState.timer = GameState.nightDuration;
                 SoundAudio.playCycleShift(true);
+                SoundAudio.playWolfHowl();
                 this.recordStory(`第 ${GameState.round} 回合：血月升起，農場進入夜間防衛。`);
                 this.showToast(`黑夜降臨：第 ${GameState.round} 回合，野狼正自森林潛入！`);
                 this.spawnNightWolves();
@@ -1601,7 +1514,8 @@
                 GameState.phase = "Day";
                 GameState.timer = GameState.dayDuration;
                 SoundAudio.playCycleShift(false);
-                this.showToast("天亮了：昨晚未被消滅的野狼退回森林。快確認同伴情況！");
+                SoundAudio.playWolfRetreat();
+                this.showToast("天亮了！未被捕的野狼正快速奔向場景外；快確認同伴情況！");
 
                 // A wolf still trapped at dawn is finally subdued by the net.
                 GameState.wolves.forEach(w => {
@@ -1609,12 +1523,21 @@
                         w.isDead = true;
                         GameState.wolvesKilled++;
                         this.recordStory(`第 ${GameState.round} 回合：一頭被網住的野狼未能逃回森林。`);
+                        FarmWorld.removeWolf(w.id);
+                    } else if (!w.isDead) {
+                        w.retreating = true;
+                        const edge = Math.floor(Math.random() * 4);
+                        w.retreatTarget = [
+                            { x: -39, z: (Math.random() - 0.5) * 55 },
+                            { x: 39, z: (Math.random() - 0.5) * 55 },
+                            { x: (Math.random() - 0.5) * 55, z: -39 },
+                            { x: (Math.random() - 0.5) * 55, z: 39 }
+                        ][edge];
                     }
-                    FarmWorld.removeWolf(w.id);
                 });
-                GameState.wolves = [];
-                GameState.traps.forEach(trap => FarmWorld.removeTrap(trap.id));
-                GameState.traps = [];
+                GameState.traps.filter(trap => trap.capturedWolfId).forEach(trap => FarmWorld.removeTrap(trap.id));
+                GameState.traps = GameState.traps.filter(trap => !trap.capturedWolfId);
+                GameState.wolves = GameState.wolves.filter(w => !w.isDead);
 
                 this.recordStory(`第 ${GameState.round} 回合：天亮，動物們回到白天活動。`);
                 this.expireUntreatedInjuries();
@@ -1629,6 +1552,21 @@
                     this.checkVictoryOrDefeat();
                 }
             }
+        },
+
+        updateRetreatingWolves(delta) {
+            GameState.wolves = GameState.wolves.filter(w => {
+                if (!w.retreating || w.isDead) return !w.isDead;
+                const dx = w.retreatTarget.x - w.x, dz = w.retreatTarget.z - w.z;
+                const distance = Math.hypot(dx, dz);
+                if (distance < 1.1) { FarmWorld.removeWolf(w.id); return false; }
+                const step = Math.min(distance, 15 * delta);
+                w.x += dx / distance * step;
+                w.z += dz / distance * step;
+                const mesh = FarmWorld.wolfMeshes[w.id];
+                if (mesh) { mesh.position.x = w.x; mesh.position.z = w.z; mesh.rotation.y = Math.atan2(dx, dz); }
+                return true;
+            });
         },
 
         dayAI() {
@@ -1677,6 +1615,41 @@
             GameState.animals.forEach(a => {
                 if (a.status !== "dead" && a.id !== "sheep" && !a.isCarried) {
                     const species = a.species || a.id;
+                    if (species === "dog" && GameState.dogPatrolActive && a.status === "normal") {
+                        const circuit = [
+                            { x: -23, z: -3 }, { x: -19, z: 13 },
+                            { x: -4, z: 23 }, { x: 18, z: 17 },
+                            { x: 24, z: -13 }, { x: 0, z: -20 }
+                        ];
+                        a.patrolIndex = a.patrolIndex || 0;
+                        const point = circuit[a.patrolIndex];
+                        const distance = Math.hypot(point.x - a.x, point.z - a.z);
+                        if (distance < 1.5) {
+                            a.patrolIndex = (a.patrolIndex + 1) % circuit.length;
+                            a.patrolPath = [];
+                        }
+                        if (!a.patrolPath?.length) {
+                            const destination = circuit[a.patrolIndex];
+                            a.patrolPath = GameState.findPath(a.x, a.z, destination.x, destination.z, 0.5);
+                        }
+                        let remaining = 2.4;
+                        while (a.patrolPath?.length && remaining > 0.01) {
+                            const next = a.patrolPath[0];
+                            const length = Math.hypot(next.x - a.x, next.z - a.z);
+                            if (length < 0.05) { a.patrolPath.shift(); continue; }
+                            const step = Math.min(remaining, length);
+                            const nx = a.x + (next.x - a.x) / length * step;
+                            const nz = a.z + (next.z - a.z) / length * step;
+                            if (!GameState.canMoveTo(nx, nz, 0.5)) { a.patrolPath = []; break; }
+                            a.x = nx; a.z = nz; remaining -= step;
+                            if (step >= length - 0.05) a.patrolPath.shift();
+                        }
+                        a.isFlying = false;
+                        const mesh = FarmWorld.animalMeshes[a.id];
+                        const nextGoal = a.patrolPath?.[0] || circuit[a.patrolIndex];
+                        if (mesh) { mesh.position.set(a.x, 0, a.z); mesh.rotation.y = Math.atan2(nextGoal.x - a.x, nextGoal.z - a.z); }
+                        return;
+                    }
                     const strongFlyer = ["crow", "sparrow"].includes(species);
                     const shortFlyer = ["chicken", "duck", "goose"].includes(species);
                     const travelRange = strongFlyer ? 5.5 : (shortFlyer ? 3.2 : 4.2);
@@ -1814,7 +1787,24 @@
             });
 
             GameState.wolves.forEach(w => {
-                if (w.isDead || w.captured) return;
+                if (w.isDead || w.captured || w.retreating || w.attacking) return;
+
+                if (GameState.crowGuardActive && GameState.crowGuardUsedRound !== GameState.round) {
+                    const crow = GameState.animals.find(a => (a.species || a.id) === "crow" && a.status === "normal" &&
+                        Math.hypot(a.x - w.x, a.z - w.z) < 15);
+                    if (crow) {
+                        GameState.crowGuardUsedRound = GameState.round;
+                        crow.x = w.x - 1.5; crow.z = w.z - 1.5; crow.isFlying = true;
+                        const crowMesh = FarmWorld.animalMeshes[crow.id];
+                        if (crowMesh) crowMesh.position.set(crow.x, 2.4, crow.z);
+                        w.retreating = true;
+                        w.retreatTarget = { x: w.x < 0 ? -39 : 39, z: w.z < 0 ? -35 : 35 };
+                        SoundAudio.playWolfRetreat();
+                        this.recordStory(`第 ${GameState.round} 回合：${crow.name} 從空中俯衝，與野狼單挑並把牠逼退。`);
+                        this.showToast(`${crow.name} 俯衝找野狼單挑，逼退了一頭狼！`);
+                        return;
+                    }
+                }
 
                 // A nearby wolf can rescue a netted packmate. The net then breaks.
                 const rescueTarget = GameState.wolves.find(other => {
@@ -1846,7 +1836,7 @@
                     const dogDz = w.z - guardDog.z;
                     const dogDist = Math.max(0.01, Math.hypot(dogDx, dogDz));
                     if (dogDist > 2.0) {
-                        const dogStep = Math.min(2.8, dogDist - 1.7);
+                        const dogStep = Math.min(GameState.dogPatrolActive ? 4.2 : 2.8, dogDist - 1.7);
                         const dogX = guardDog.x + (dogDx / dogDist) * dogStep;
                         const dogZ = guardDog.z + (dogDz / dogDist) * dogStep;
                         if (GameState.canMoveTo(dogX, dogZ, 0.5)) {
@@ -1864,7 +1854,7 @@
                         }
                     }
 
-                    if (dogDist < 7.5) {
+                    if (dogDist < (GameState.dogPatrolActive ? 9.5 : 7.5)) {
                         const awayDist = Math.max(0.01, Math.hypot(dogDx, dogDz));
                         const push = 1.65;
                         const pushedX = w.x + (dogDx / awayDist) * push;
@@ -1903,6 +1893,7 @@
                 const dz = targetPos.z - w.z;
                 const dist = Math.sqrt(dx*dx + dz*dz);
 
+                const previousX = w.x, previousZ = w.z;
                 if (dist > 1.0) {
                     // Wolves sprint at night; traps and guard dogs are the intended counters.
                     const wolfSpeed = 2.35;
@@ -1922,35 +1913,52 @@
                         wMesh.position.set(w.x, 0, w.z);
                         wMesh.rotation.y = Math.atan2(dx, dz);
                     }
-                } else if (targetAnimal) {
-                    // Attack animal!
-                    this.animalAttackedByWolf(targetAnimal, w);
                 }
 
-                // Net trap collision: it captures, but does not kill immediately.
+                // Test the whole running segment: a fast wolf can leap over a trap
+                // between the one-second AI updates.
                 GameState.traps.forEach(trap => {
-                    if (trap.capturedWolfId) return;
-                    const tdx = trap.x - w.x;
-                    const tdz = trap.z - w.z;
-                    const tDist = Math.sqrt(tdx*tdx + tdz*tdz);
+                    if (trap.capturedWolfId || w.captured) return;
+                    const segmentX = w.x - previousX, segmentZ = w.z - previousZ;
+                    const lengthSquared = segmentX * segmentX + segmentZ * segmentZ;
+                    const fraction = lengthSquared > 0
+                        ? Math.max(0, Math.min(1, ((trap.x - previousX) * segmentX + (trap.z - previousZ) * segmentZ) / lengthSquared))
+                        : 0;
+                    const nearX = previousX + segmentX * fraction;
+                    const nearZ = previousZ + segmentZ * fraction;
+                    const tDist = Math.hypot(trap.x - nearX, trap.z - nearZ);
 
-                    if (tDist < 1.1) {
+                    if (tDist < 1.35) {
                         w.captured = true;
+                        w.capturedAt = performance.now();
                         trap.capturedWolfId = w.id;
+                        w.x = trap.x; w.z = trap.z;
+                        const trappedMesh = FarmWorld.wolfMeshes[w.id];
+                        if (trappedMesh) trappedMesh.position.set(w.x, 0, w.z);
                         SoundAudio.playTrapSnap();
                         FarmWorld.captureWolfInNet(trap.id, w.id);
                         this.recordStory(`第 ${GameState.round} 回合：${w.id} 踩中獸夾，網子把牠吊起來。`);
                         this.showToast("獸夾噴出網子，野狼在裡面滾動！快留意其他狼的救援！");
                     }
                 });
+                if (!w.captured && targetAnimal && Math.hypot(targetAnimal.x - w.x, targetAnimal.z - w.z) <= 1.7) {
+                    w.attacking = true;
+                    FarmWorld.animateWolfPounce(w, targetAnimal, () => this.animalAttackedByWolf(targetAnimal, w));
+                }
             });
+
+            if (GameState.wolves.some(w => !w.isDead && !w.captured && !w.retreating) &&
+                (!this.lastWolfRunSound || performance.now() - this.lastWolfRunSound > 1400)) {
+                SoundAudio.playWolfRun();
+                this.lastWolfRunSound = performance.now();
+            }
 
             // Filter out dead wolves
             GameState.wolves = GameState.wolves.filter(w => !w.isDead);
         },
 
         animalAttackedByWolf(animal, wolf) {
-            SoundAudio.playWolfAttack();
+            if (GameState.phase !== "Night" || wolf.isDead || animal.status === "dead" || GameState.gameOver) return;
             if (animal.status === "injured") {
                 animal.status = "dead";
                 GameState.animalsDead++;
@@ -2081,7 +2089,7 @@
                 title.className = "text-2xl font-black mb-3 text-rose-500";
                 desc.innerText = `群獸因羊的面子謊言陷入大恐慌，已有 ${GameState.animalsDead} 隻動物在黑夜中犧牲。\n\n【農場故事紀錄】\n${story}`;
             }
-            this.renderStorybookPages(GameState.storyLog.slice(-18));
+            this.renderStorybookPages(GameState.storyLog);
             generateButton.classList.remove("hidden");
             printButton.classList.remove("hidden");
         },
@@ -2134,7 +2142,8 @@
 
     <script>
     document.addEventListener("DOMContentLoaded", () => {
-        GameEngine.init();
+        window.addEventListener("pointerdown", () => SoundAudio.init(), { once: true });
+        loadDialogueJson().finally(() => { GameEngine.init(); renderLoop(); });
 
         const dialoguePanel = document.getElementById("dialogue-panel");
         const dialogueName = document.getElementById("dialogue-name");
@@ -2160,6 +2169,12 @@
         const injuredListItems = document.getElementById("injured-list-items");
         const clueBoard = document.getElementById("clue-board");
         const clueSheep = document.getElementById("clue-sheep");
+        const evidenceElements = {
+            night_out: document.getElementById("clue-night-out"),
+            duck_shadow: document.getElementById("clue-duck-shadow"),
+            crow_tracks: document.getElementById("clue-crow-tracks"),
+            sheep_truth: clueSheep
+        };
         const clueElements = {
             north: document.getElementById("clue-north"),
             west: document.getElementById("clue-west"),
@@ -2167,18 +2182,31 @@
             south: document.getElementById("clue-south")
         };
 
-        function revealClue(data) {
-            if (!data) return;
-            if (data.problem) {
-                clueSheep.innerText = `黑鼻羊的壞事：${data.problem}`;
-                clueSheep.classList.add("found");
-            }
-            if (data.wolfClue && clueElements[data.wolfClue.key]) {
-                GameState.discoveredClues[data.wolfClue.key] = data.wolfClue.text;
-                clueElements[data.wolfClue.key].innerText = data.wolfClue.text;
-                clueElements[data.wolfClue.key].classList.add("found");
+        function applyDialogueGrants(entry) {
+            for (const grant of entry.grants || []) {
+                if (STORY_BRANCHES.clues[grant]) {
+                    GameState.discoveredClues[grant] = STORY_BRANCHES.clues[grant];
+                    clueElements[grant].innerText = STORY_BRANCHES.clues[grant];
+                    clueElements[grant].classList.add("found");
+                } else if (STORY_BRANCHES.evidence[grant]) {
+                    GameState.evidence[grant] = true;
+                    evidenceElements[grant].innerText = STORY_BRANCHES.evidence[grant];
+                    evidenceElements[grant].classList.add("found");
+                } else if (grant === "dog_patrol") {
+                    GameState.dogPatrolActive = true;
+                    GameEngine.showToast("托托開始加速巡邏莊園；夜裡會主動追趕野狼！");
+                } else if (grant === "crow_guard") {
+                    GameState.crowGuardActive = true;
+                }
             }
             clueBoard.classList.remove("hidden");
+        }
+
+        function nextBranchDialogue(species) {
+            const lines = STORY_BRANCHES.conversations[species] || [];
+            const available = lines.filter(line =>
+                (line.requires || []).every(flag => GameState.evidence[flag]));
+            return available.find(line => !GameState.conversationSeen[line.id]) || null;
         }
 
         function setPlayerDestination(destination, guidedTargetId = null, forceRepath = true) {
@@ -2382,7 +2410,8 @@
 
         // Display dialogue box for animal
         function openDialogueForAnimal(animal, justRescued = false, scriptedEntry = null) {
-            const data = DIALOGUES_DATA[animal.id] || {
+            const species = animal.species || animal.id;
+            const data = DIALOGUES_DATA[species] || {
                 name: animal.name,
                 normal: ["……今天農場的風很舒服。"],
                 injured: "我受傷了……請把我帶回紅農舍。",
@@ -2414,6 +2443,7 @@
                 dialogueTag.innerText = "治療康復";
                 dialogueTag.className = "text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800";
                 selectedEntry = makeDialogueEntry(data.post_rescue);
+                selectedEntry.grants = STORY_BRANCHES.rescueGrants?.[species] || [];
                 dialogueContent.innerText = selectedEntry.text;
                 dialogueHint.innerText = "感謝你的救助，這隻動物提供了關鍵的防禦方位！";
             } else if (animal.status === "injured") {
@@ -2432,31 +2462,29 @@
                 dialogueHint.innerText = "點擊「摸摸頭」安撫情緒，動物才會冷靜說出真話。";
                 btnSoothe.classList.remove("hidden");
             } else {
-                if (GameState.sheepSuspected && data.suspicious) {
-                    dialogueTag.innerText = "開始懷疑黑鼻羊";
-                    dialogueTag.className = "text-xs px-2 py-0.5 rounded bg-orange-950 text-orange-300 border border-orange-800";
-                    selectedEntry = makeDialogueEntry(data.suspicious[Math.floor(Math.random() * data.suspicious.length)]);
-                    dialogueContent.innerText = selectedEntry.text;
-                    dialogueHint.innerText = "對談條件已觸發：動物們開始比對黑鼻羊與其他謠言。";
-                } else {
-                    dialogueTag.innerText = "正常狀態";
-                    dialogueTag.className = "text-xs px-2 py-0.5 rounded bg-stone-800 text-stone-300 border border-stone-600";
-                    const nList = data.normal || ["今天農場陽光真好。"];
-                    selectedEntry = makeDialogueEntry(nList[Math.floor(Math.random() * nList.length)]);
-                    dialogueContent.innerText = selectedEntry.text;
-                    dialogueHint.innerText = "仔細閱讀線索，找出四條可能被野狼突襲的通道！";
-                }
+                const branchLine = nextBranchDialogue(species);
+                dialogueTag.innerText = branchLine
+                    ? (branchLine.route === "truth" ? "調查黑鼻羊的謊言" : "防狼線索與守備")
+                    : "農場閒聊";
+                dialogueTag.className = "text-xs px-2 py-0.5 rounded bg-sky-950 text-sky-200 border border-sky-700";
+                const followups = species === "sheep" && GameState.evidence.sheep_truth
+                    ? (data.afterTruth || data.normal)
+                    : (GameState.sheepSuspected && data.suspicious ? data.suspicious : data.normal);
+                const fallbackLines = Array.isArray(followups) && followups.length ? followups : ["今天農場陽光真好。"];
+                const count = GameState.conversationCount[species] || 0;
+                if (!branchLine) GameState.conversationCount[species] = count + 1;
+                selectedEntry = makeDialogueEntry(branchLine || fallbackLines[count % fallbackLines.length]);
+                dialogueContent.innerText = selectedEntry.text;
+                dialogueHint.innerText = branchLine?.route === "truth"
+                    ? "比對昨夜行蹤、池塘怪影與空中的足跡，再找黑鼻羊對質。"
+                    : "查證入口後可放置網夾；五個網夾壞了無法修復。";
+                if (branchLine) GameState.conversationSeen[branchLine.id] = true;
             }
 
             showNextCharacterGuide(readNextPointer(selectedEntry) || readNextPointer(data));
-            revealClue(data);
-            if (animal.id === "sheep" && data.problem && !scriptedEntry) {
-                dialogueHint.innerText = "黑鼻羊的話聽起來很勇敢，但請注意牠是否避開了真正受傷的原因。";
-            } else if (data.wolfClue) {
-                dialogueHint.innerText = data.wolfClue.text;
-            }
+            if (selectedEntry && !scriptedEntry) applyDialogueGrants(selectedEntry);
 
-            GameEngine.recordStory(`${data.name}對主人說：「${dialogueContent.innerText}」`);
+            GameEngine.recordStory(`${data.name || animal.name}對主人說：「${dialogueContent.innerText}」`);
             dialoguePanel.classList.remove("hidden");
             SoundAudio.playPop();
         }
@@ -2473,7 +2501,19 @@
             const intersects = FarmWorld.raycaster.intersectObjects(FarmWorld.scene.children, true);
 
             if (intersects.length > 0) {
-                const hit = intersects[0];
+                const isAnimalHit = hit => {
+                    let node = hit.object;
+                    while (node) {
+                        if (node.name?.startsWith("Animal_")) return true;
+                        node = node.parent;
+                    }
+                    return false;
+                };
+                // Trees and roof pieces can sit in front of a small bird. Prefer
+                // the animal hit so an intentionally clicked character responds.
+                const hit = GameState.isPlacingTrap
+                    ? (intersects.find(item => item.object.name === "Ground") || intersects[0])
+                    : (intersects.find(isAnimalHit) || intersects[0]);
                 const hitObj = hit.object;
 
                 // Check distance to player
@@ -2565,6 +2605,25 @@
             const delta = Math.min((now - lastTime) / 1000, 0.1);
             lastTime = now;
             clock += delta * 3.5;
+            GameEngine.updateRetreatingWolves(delta);
+            GameState.wolves.forEach(w => {
+                const mesh = FarmWorld.wolfMeshes[w.id];
+                if (!mesh || w.attacking) return;
+                if (w.captured) {
+                    if (now - w.capturedAt > 800) {
+                        mesh.position.y = 0.5 + Math.abs(Math.sin(now * 0.012)) * 0.2;
+                        mesh.rotation.z = Math.PI / 5 + Math.sin(now * 0.014) * 0.25;
+                    }
+                } else {
+                    mesh.position.y = Math.abs(Math.sin(now * 0.02 + w.x)) * 0.22;
+                    for (let i = 0; i < 4; i++) {
+                        const leg = mesh.getObjectByName(`WolfLeg${i}`);
+                        if (leg) leg.rotation.x = Math.sin(now * 0.02 + (i % 2 ? Math.PI : 0)) * 0.65;
+                    }
+                    const head = mesh.getObjectByName("WolfHead");
+                    if (head) head.rotation.x = Math.sin(now * 0.02) * 0.09;
+                }
+            });
 
             // Sheep initiates an on-field rumor conversation with the animal it approached.
             if (GameState.pendingSheepDialogue && dialoguePanel.classList.contains("hidden")) {
@@ -2829,7 +2888,6 @@
             FarmWorld.renderer.render(FarmWorld.scene, FarmWorld.camera);
         }
 
-        renderLoop();
     });
     </script>
 </body>

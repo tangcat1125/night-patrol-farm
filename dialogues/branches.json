@@ -1,0 +1,66 @@
+{
+  "evidence": {
+    "night_out": "信鴿記下：昨夜黑鼻羊獨自走出農舍，往北邊去了。",
+    "duck_shadow": "鴨子在池塘看見比狼還大的影子；這只能證明牠看見影子，不能證明是狼。",
+    "crow_tracks": "烏鴉從空中看見：北渠有羊蹄印和另一組狼爪印，兩者沒有打鬥痕跡。",
+    "sheep_truth": "三份證詞對上了：黑鼻羊承認去採莓果、跌進北渠，並沒有和狼單挑。"
+  },
+  "clues": {
+    "north": "北方：臭水溝有狼爪印，可能是入口。",
+    "west": "西方：木門下有新鮮狼味。",
+    "southeast": "東南方：矮圍牆有可鑽入的破洞。",
+    "south": "南方：廢果園的草叢被壓倒。"
+  },
+  "rescueGrants": {
+    "pig": ["southeast"],
+    "cow": ["north"],
+    "horse": ["west"],
+    "dog": ["west"],
+    "chicken": ["south"],
+    "crow": ["north"],
+    "sparrow": ["south"]
+  },
+  "conversations": {
+    "sheep": [
+      {"id":"sheep-claim","route":"truth","text":"我昨晚在森林跟野狼單挑，牠們今晚只會從東門來！我腿上的泥？那是打鬥沾的。","nextCharacter":"pigeon"},
+      {"id":"sheep-confession","route":"truth","requires":["night_out","duck_shadow","crow_tracks"],"grants":["sheep_truth","north"],"text":"好吧，我昨晚偷跑出去採莓果，跌進北邊臭水溝。那裡有狼腳印，可我根本沒和狼打架；我怕大家又不信我，才編出單挑的故事。","nextCharacter":"dog"}
+    ],
+    "pig": [
+      {"id":"pig-wall","route":"defense","grants":["southeast"],"text":"我看見東南矮圍牆破了一個洞，這是能查證的入口。黑鼻羊說泥坑、池塘和東柵欄都有狼，我可不敢再往那幾處去！","nextCharacter":"dog"}
+    ],
+    "cow": [
+      {"id":"cow-north","route":"defense","grants":["north"],"text":"北邊臭水溝吹來狼味。羊說只會從東門來，可我不敢只防一邊。先去問高處巡看的烏鴉吧。","nextCharacter":"crow"}
+    ],
+    "horse": [
+      {"id":"horse-west","route":"defense","grants":["west"],"text":"西邊木門附近的蹄聲不對。狗守在那裡，問牠能不能跑快些巡邏。","nextCharacter":"dog"}
+    ],
+    "dog": [
+      {"id":"dog-patrol","route":"defense","grants":["west","dog_patrol"],"text":"西門下方有狼味。我現在加快腳步巡遍莊園；夜裡一看見狼，就追上去把牠趕走！","nextCharacter":"pigeon"},
+      {"id":"dog-doubt","route":"truth","requires":["night_out"],"text":"羊腿上是臭水溝的泥，不像和狼纏鬥留下的痕跡。去問昨晚在高空巡看的烏鴉。","nextCharacter":"crow"}
+    ],
+    "cat": [
+      {"id":"cat-warning","route":"defense","text":"受傷的夥伴會引來狼，兩回合內務必抱回紅農舍治療。獸夾一共五個，壞了就沒辦法修。","nextCharacter":"chicken"}
+    ],
+    "chicken": [
+      {"id":"chicken-south","route":"defense","grants":["south"],"text":"我在南邊雞舍後面的廢果園聽到草叢壓倒的聲音。看看麻雀是否也聽到了。","nextCharacter":"sparrow"}
+    ],
+    "duck": [
+      {"id":"duck-monster","route":"truth","grants":["duck_shadow"],"text":"昨夜池塘旁有個比狼還大的怪物影子！可是水面一直晃，我只看見影子，沒看清牠是誰。羊說的東門狼，會不會根本不是那個影子？","nextCharacter":"crow"},
+      {"id":"duck-water","route":"defense","text":"水閘旁有水痕，但不能光憑這個就說狼一定從池塘來。別把羊的猜測當成足跡。","nextCharacter":"goose"}
+    ],
+    "goose": [
+      {"id":"goose-doubt","route":"truth","requires":["duck_shadow"],"text":"我守著池塘，鴨子說的巨大怪物只有倒影。先查證腳印，別跟著黑鼻羊的謠言亂跑。","nextCharacter":"crow"}
+    ],
+    "crow": [
+      {"id":"crow-tracks","route":"truth","requires":["night_out"],"grants":["crow_tracks","north","crow_guard"],"text":"嘎！我昨晚從北渠上空看見羊蹄印和狼爪印，沒有搏鬥留下的亂痕。我還俯衝去找那頭狼單挑，牠躲進林裡了。今晚我會再從空中牽制牠。","nextCharacter":"sheep"},
+      {"id":"crow-watch","route":"defense","grants":["north","crow_guard"],"text":"我在北邊臭水溝上空看見狼爪印。今晚我會留在高處，發現狼就俯衝牽制。","nextCharacter":"pigeon"}
+    ],
+    "sparrow": [
+      {"id":"sparrow-orchard","route":"defense","grants":["south"],"text":"南邊廢果園有被壓倒的草，還聽見重重的腳步。從那條窄路進來最容易踩到網夾。","nextCharacter":"pigeon"}
+    ],
+    "pigeon": [
+      {"id":"pigeon-record","route":"truth","grants":["night_out"],"text":"我記下昨晚的事：月亮剛升起時，黑鼻羊獨自離開農舍，往北邊走；天亮前牠才帶著泥巴回來。牠說整夜都在和狼打架，時間對不上。","nextCharacter":"duck"},
+      {"id":"pigeon-routes","route":"defense","text":"我們需要把每個入口的證詞分開記錄：北渠、西門、東南破牆、南果園。查到哪處再往哪處放網夾。","nextCharacter":"pig"}
+    ]
+  }
+}
