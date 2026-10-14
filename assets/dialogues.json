@@ -1,0 +1,52 @@
+{
+  "blackNoseSheep": {
+    "id": "sheep",
+    "name": "黑鼻羊・貝克",
+    "problem": "牠曾反覆謊稱狼來了，讓農場失去對牠的信任；如今牠因罪惡感與恐懼持續造謠。",
+    "truth": "牠沒有打敗野狼，而是在北邊臭水溝跌倒受傷，害怕被嘲笑才編造謊言。",
+    "role": "造謠者／恐慌核心",
+    "nextCharacter": "cow",
+    "wolfClue": "北方的臭水溝是野狼進入農場的路線。"
+  },
+  "characterClues": {
+    "pig": "東南方的矮圍牆破了一個洞。",
+    "dog": "西方木門下方有狼味。",
+    "sparrow": "南方廢果園的草叢被壓倒。"
+  },
+  "conversationConditions": {
+    "sheepSuspectedAfterRumors": 2,
+    "triggerText": "泥坑、池塘與東邊的柵欄都被說成野狼出現地點，動物們開始懷疑黑鼻羊。",
+    "pigAvoids": ["泥坑", "池塘", "東邊柵欄"]
+  },
+  "wolfEncounters": [
+    {
+      "id": "north-ditch",
+      "name": "北邊臭水溝",
+      "x": 0,
+      "z": -19,
+      "clue": "黑鼻羊與烏鴉都指出這裡有狼腳印。"
+    },
+    {
+      "id": "west-gate",
+      "name": "西邊木門",
+      "x": -19,
+      "z": 2,
+      "clue": "老狗聞到木門下方有狼味。"
+    },
+    {
+      "id": "southeast-wall",
+      "name": "東南矮圍牆",
+      "x": 12,
+      "z": 16,
+      "clue": "花斑豬發現圍牆破洞。"
+    },
+    {
+      "id": "south-orchard",
+      "name": "南邊廢果園",
+      "x": -3,
+      "z": 18,
+      "clue": "麻雀聽見果園草叢被壓倒的聲音。"
+    }
+  ],
+  "nightRule": "野狼主要在夜間從上述四條路線進入農場；第十回合後可能增生第五頭野狼。"
+}

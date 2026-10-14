@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>夜巡農場｜故事主頁</title>
+<style>
+    :root { --ink:#211914; --paper:#f6ead0; --red:#a9422c; --gold:#e8a94a; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; min-height:100%; background:#171512; color:var(--ink); font-family:Georgia,"Noto Serif TC","Microsoft JhengHei",serif; }
+    body { overflow-x:hidden; }
+    .page { min-height:100vh; position:relative; overflow:hidden; background:#cfa964 url('assets/storybook-background.webp') center/cover no-repeat; }
+    .page:after { content:""; position:absolute; inset:0; z-index:1; background:linear-gradient(180deg,rgba(35,23,17,.18),rgba(35,23,17,.42)); pointer-events:none; }
+    .page:before { content:""; position:absolute; inset:0; opacity:.22; pointer-events:none; background-image:repeating-linear-gradient(97deg, transparent 0 8px, rgba(72,41,23,.22) 9px 10px, transparent 11px 18px), repeating-linear-gradient(7deg, transparent 0 13px, rgba(255,245,198,.2) 14px 15px); mix-blend-mode:multiply; }
+    .moon { display:none; }
+    .forest { display:none; }
+    .field { display:none; }
+    .field:after { content:""; position:absolute; inset:18% 0 0; background:repeating-linear-gradient(168deg,transparent 0 28px,rgba(68,88,38,.28) 29px 33px); }
+    .farmhouse { display:none; }
+    .farmhouse:before { content:""; position:absolute; left:-24px; top:-68px; width:220px; height:85px; background:#513428; border:8px solid #2d211c; clip-path:polygon(50% 0,100% 100%,0 100%); }
+    .farmhouse:after { content:"✚"; position:absolute; right:23px; top:23px; color:#ffe9b6; font-size:31px; text-shadow:3px 3px #61251e; }
+    .barn-door { position:absolute; left:68px; bottom:0; width:54px; height:74px; background:#3a251d; border:6px solid #6d382a; }
+    .barn-door:after { content:""; position:absolute; inset:0; background:linear-gradient(45deg,transparent 47%,#9a6040 48% 52%,transparent 53%),linear-gradient(-45deg,transparent 47%,#9a6040 48% 52%,transparent 53%); }
+    .animal { display:none; }
+    .sheep { left:24%; bottom:30%; } .pig { left:34%; bottom:23%; animation-delay:.5s; } .cow { right:28%; bottom:29%; font-size:61px; animation-delay:1s; } .chicken { right:20%; bottom:23%; font-size:34px; animation-delay:1.4s; } .goose { left:13%; bottom:22%; font-size:42px; animation-delay:.8s; }
+    .sheep:before { content:"●"; position:absolute; right:4px; bottom:8px; color:#17120f; font-size:13px; text-shadow:none; }
+    .sheep:after { content:"😏"; position:absolute; left:42px; top:-18px; font-size:20px; filter:none; }
+    @keyframes bob { 0%,100%{transform:translateY(0) rotate(-2deg)} 50%{transform:translateY(-8px) rotate(2deg)} }
+    .wolves { display:none; }
+    .wolf-eye { width:13px; height:13px; background:#ff5540; box-shadow:0 0 12px 5px #ff3020; animation:blink 2.4s infinite; }
+    @keyframes blink { 0%,44%,50%,100%{opacity:1} 47%{opacity:.1} }
+    .wolf-label { position:absolute; top:-32px; left:50%; transform:translateX(-50%); color:#dbc28e; font:700 12px/1 Georgia,serif; white-space:nowrap; letter-spacing:2px; }
+    .hero { position:relative; z-index:10; width:min(1080px,92vw); margin:auto; padding:8vh 0 7vh; text-align:center; }
+    .eyebrow { color:#fff0b7; text-shadow:3px 3px #543528; letter-spacing:8px; font-weight:900; font-size:clamp(12px,2vw,18px); }
+    h1 { margin:8px 0 10px; color:#fff5d4; font-size:clamp(42px,8vw,94px); line-height:.95; letter-spacing:8px; text-shadow:7px 7px 0 #542e23, 0 0 20px rgba(255,215,120,.45); -webkit-text-stroke:2px #3f271e; }
+    .subtitle { color:#fff0bd; font-weight:900; font-size:clamp(16px,2.4vw,26px); text-shadow:3px 3px #5a3226; }
+    .story-card { width:min(720px,92vw); margin:24px auto 18px; padding:23px 28px; background:rgba(215,215,209,.82); border:4px solid rgba(48,42,37,.75); box-shadow:9px 10px 0 rgba(50,35,26,.35), inset 0 0 0 2px rgba(255,255,255,.4); transform:rotate(-.8deg); text-align:left; }
+    .story-card h2 { margin:0 0 10px; font-size:clamp(20px,3vw,30px); text-align:center; text-shadow:2px 2px 0 #fff; }
+    .story-card p { margin:0; line-height:1.75; font-size:clamp(14px,1.8vw,18px); text-shadow:1px 1px #fff; }
+    .credits { height:92px; overflow:hidden; width:min(680px,90vw); margin:0 auto 19px; position:relative; color:#17120f; font-weight:900; text-shadow:1px 1px #fff; }
+    .credits:before { content:""; position:absolute; inset:0; z-index:2; background:linear-gradient(rgba(232,181,104,.98),transparent 25%,transparent 75%,rgba(232,181,104,.98)); pointer-events:none; }
+    .credits-track { position:absolute; width:100%; bottom:-190px; animation:roll 15s linear infinite; font-size:14px; line-height:2; }
+    @keyframes roll { from{transform:translateY(0)} to{transform:translateY(-265px)} }
+    .start { position:relative; z-index:12; display:inline-flex; align-items:center; gap:15px; padding:12px 28px 12px 15px; border:5px solid #30211a; background:#e5a33e; color:#2d1d16; cursor:pointer; box-shadow:8px 8px 0 #4a2920; font:900 19px Georgia,serif; transition:.18s; }
+    .start:hover { transform:translateY(-5px); background:#f4c35f; }
+    .start:active { transform:translateY(3px); box-shadow:3px 3px 0 #4a2920; }
+    .start.clicked .mini-farmer:after { transform:translateY(-12px) rotate(-12deg); transition:.25s; }
+    .mini-farmer { width:42px; height:47px; position:relative; }
+    .mini-farmer:before { content:""; position:absolute; width:54px; height:12px; left:-9px; top:-10px; background:#c6812f; border:3px solid #613b24; box-shadow:0 -8px 0 #c6812f; }
+    .mini-farmer:after { content:"↥"; position:absolute; right:-18px; top:-25px; color:#fff2ba; font-size:32px; text-shadow:3px 3px #4d2a20; }
+    .dissolve { position:fixed; inset:0; z-index:99; pointer-events:none; opacity:0; background-color:#1c1b18; background-image:linear-gradient(90deg,rgba(255,255,255,.12) 25%,transparent 25% 50%,rgba(255,255,255,.08) 50% 75%,transparent 75%),linear-gradient(rgba(0,0,0,.2) 50%,transparent 50%); background-size:16px 16px; transition:opacity .25s; }
+    .dissolve.go { opacity:1; animation:pixelFade .85s steps(7,end) forwards; }
+    @keyframes pixelFade { 0%{clip-path:inset(0 0 0 0)} 100%{clip-path:inset(0 0 100% 0)} }
+    @media (max-width:650px){ .hero{padding-top:5vh}.story-card{padding:18px}.farmhouse{transform:translateX(-50%) scale(.8);bottom:28%}.animal{font-size:32px}.cow{font-size:45px}.wolves{right:9%;bottom:47%;gap:15px} }
+
+    /* Typography and hierarchy pass: keep every text layer readable over the artwork. */
+    .hero { width:min(860px,92vw); padding:clamp(34px,6vh,76px) 0 44px; }
+    .eyebrow { display:inline-block; padding:8px 18px; background:rgba(38,25,19,.78); border:1px solid rgba(255,236,184,.72); color:#ffe9ae; font-family:"Noto Serif TC","BiauKai","DFKai-SB",serif; font-size:clamp(12px,1.7vw,17px); letter-spacing:.28em; text-shadow:0 2px 0 #24160f; }
+    h1 { display:block; width:max-content; max-width:100%; margin:14px auto 8px; padding:7px 30px 10px; color:#fff4cf; font-family:"Noto Serif TC","BiauKai","DFKai-SB",serif; font-size:clamp(46px,7vw,82px); font-weight:900; letter-spacing:.16em; line-height:1.1; -webkit-text-stroke:0; text-shadow:0 3px 0 #4b2c20, 0 7px 14px rgba(28,18,13,.55); background:rgba(54,31,22,.56); border-top:2px solid rgba(255,237,180,.7); border-bottom:2px solid rgba(255,237,180,.7); }
+    .subtitle { display:inline-block; padding:6px 24px; color:#fff5d3; font-family:"Noto Serif TC","BiauKai","DFKai-SB",serif; font-size:clamp(15px,2vw,23px); letter-spacing:.16em; background:rgba(39,25,19,.7); text-shadow:0 2px 0 #3d2118; }
+    .story-card { width:min(760px,94vw); margin:25px auto 18px; padding:24px 38px 27px; background:rgba(244,239,224,.94); border:2px solid #4e382b; border-radius:3px; box-shadow:0 8px 0 rgba(45,28,20,.38), inset 0 0 0 1px rgba(255,255,255,.8); transform:none; text-align:left; }
+    .story-card h2 { margin:0 0 13px; padding-bottom:10px; color:#45291f; font-family:"Noto Serif TC","BiauKai","DFKai-SB",serif; font-size:clamp(22px,3vw,31px); letter-spacing:.18em; border-bottom:2px solid #c18a52; text-shadow:1px 1px #fff; }
+    .story-card p { margin:0; color:#30231d; font-family:"Noto Serif TC","BiauKai","DFKai-SB",serif; font-size:clamp(14px,1.65vw,18px); line-height:2; letter-spacing:.035em; text-align:justify; text-shadow:none; }
+    .credits { height:145px; width:min(760px,90vw); margin:14px auto 25px; border:2px solid rgba(255,235,180,.82); background:rgba(42,28,21,.82); box-shadow:0 6px 0 rgba(45,27,18,.35); color:#fff0bd; }
+    .credits:before { background:linear-gradient(rgba(42,28,21,.95),transparent 22%,transparent 78%,rgba(42,28,21,.95)); }
+    .credits-track { bottom:-235px; animation-duration:22s; font-family:"Noto Serif TC","BiauKai","DFKai-SB",serif; font-size:16px; line-height:2.15; text-shadow:0 2px 0 #24160f; }
+    .start-area { display:flex; align-items:center; justify-content:center; gap:22px; margin-top:3px; }
+    .farmer-showcase { width:190px; height:190px; display:flex; align-items:flex-end; justify-content:center; overflow:visible; }
+    .farmer-showcase .mini-farmer { width:190px; height:190px; object-fit:contain; object-position:center bottom; transform:none; }
+    .start { gap:18px; min-width:330px; min-height:102px; justify-content:center; padding:8px 25px; border:3px solid #3a241b; border-radius:2px; background:#f0b54d; color:#2b1c15; box-shadow:7px 7px 0 #4a2920, inset 0 0 0 2px rgba(255,236,174,.55); font-family:"Noto Serif TC","BiauKai","DFKai-SB",serif; font-size:18px; letter-spacing:.08em; }
+    .start:hover { background:#ffd271; }
+    .mini-farmer { flex:none; width:92px; height:92px; object-fit:contain; object-position:center bottom; mix-blend-mode:normal; filter:drop-shadow(3px 4px 0 rgba(45,25,17,.42)); }
+    .mini-farmer:before { width:62px; height:12px; left:-10px; top:-12px; background:#c6812f; border:3px solid #613b24; box-shadow:0 -7px 0 #c6812f; }
+    .mini-farmer:after { content:"✋"; right:-20px; top:-28px; color:#fff2ba; font-size:24px; text-shadow:2px 2px #4d2a20; }
+    @media (max-width:650px){ .hero{padding-top:28px}.story-card{padding:18px 20px}.story-card p{line-height:1.8;text-align:left} h1{letter-spacing:.1em;padding-left:18px;padding-right:18px}.eyebrow{letter-spacing:.14em}.start-area{flex-direction:column;gap:2px}.farmer-showcase{width:150px;height:150px}.farmer-showcase .mini-farmer{width:150px;height:150px}.start{min-width:280px} }
+
+    /* Final composition: the character and the launch control occupy separate marked areas. */
+    .start-area { position:absolute; left:calc(100% + 28px); top:286px; display:flex; flex-direction:column; align-items:center; gap:4px; width:250px; height:330px; margin:0; }
+    .farmer-showcase { position:static; flex:none; width:220px; height:220px; }
+    .farmer-showcase .mini-farmer { width:220px; height:220px; }
+    .start { position:static; min-width:245px; min-height:78px; padding:8px 16px; font-size:16px; }
+    @media (max-width:1250px){ .start-area{left:auto;right:3%;top:300px} }
+    @media (max-width:650px){ .start-area{position:relative;left:auto;right:auto;top:auto;width:100%;height:330px;gap:2px}.farmer-showcase{width:150px;height:150px}.farmer-showcase .mini-farmer{width:150px;height:150px}.start{min-width:280px;min-height:78px} }
+</style>
+</head>
+<body>
+<main class="page">
+    <div class="moon"></div><div class="forest"></div><div class="field"></div>
+    <div class="farmhouse"><div class="barn-door"></div></div>
+    <div class="animal sheep">🐑</div><div class="animal pig">🐖</div><div class="animal cow">🐄</div><div class="animal chicken">🐔</div><div class="animal goose">🪿</div>
+    <div class="wolves"><div class="wolf-label">幽暗森林</div><i class="wolf-eye"></i><i class="wolf-eye"></i><i class="wolf-eye"></i><i class="wolf-eye"></i></div>
+    <section class="hero">
+        <div class="eyebrow">一則發生在血月升起以前的農場寓言</div>
+        <h1>夜巡農場</h1>
+        <div class="subtitle">群獸之懼與第三聲狼嚎</div>
+        <article class="story-card">
+            <h2>故事大綱</h2>
+            <p>在梯田農場裡，主人和一群個性古怪卻彼此依賴的動物過著快樂日子。黑鼻羊總在角落露出僥倖的壞笑，牠曾用「狼來了」捉弄大家，直到幽暗森林裡真的亮起四雙狼眼。當夜色降臨，主人必須聽懂每一句對談、安撫恐慌、救回受傷的夥伴，並在狼群進入農場前布置會噴出網子的獸夾。這是一場關於信任、勇氣與重新學會彼此照顧的農場冒險。</p>
+        </article>
+        <div class="credits"><div class="credits-track">主人與動物們的平凡幸福<br>黑鼻羊的僥倖邪笑<br>幽暗森林裡閃動的四雙眼睛<br>第一聲狼嚎：沒有人相信<br>第二聲狼嚎：大家開始爭吵<br>第三聲狼嚎：主人拿起了火把<br>——故事現在開始——</div></div>
+        <div class="start-area">
+            <div class="farmer-showcase"><img id="farmer-sprite" class="mini-farmer" src="assets/farmer/farmer-idle.webp" alt="麥塊農夫"></div>
+            <button class="start" id="start-game"><span>牧場主人，開始巡守</span></button>
+        </div>
+    </section>
+    <div class="dissolve" id="dissolve"></div>
+</main>
+<script>
+document.getElementById('start-game').addEventListener('click', () => {
+    const startButton = document.getElementById('start-game');
+    const farmerSprite = document.getElementById('farmer-sprite');
+    startButton.classList.add('clicked');
+    farmerSprite.src = 'assets/farmer/farmer-wave-up.webp';
+    setTimeout(() => { farmerSprite.src = 'assets/farmer/farmer-wave-down.webp'; }, 320);
+    document.getElementById('dissolve').classList.add('go');
+    setTimeout(() => {
+        sessionStorage.setItem('farm-play-access', 'granted-once');
+        window.location.href = 'play/main.html';
+    }, 1250);
+});
+</script>
+</body>
+</html>

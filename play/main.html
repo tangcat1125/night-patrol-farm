@@ -1,0 +1,2690 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>夜巡農場：誰在說狼來了？</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #101510;
+        }
+        #webgl-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .pixel-border {
+            border: 3px solid #3e2723;
+            box-shadow: inset -2px -2px 0px 0px #1a0f0d, inset 2px 2px 0px 0px #8d6e63;
+        }
+        .pixel-box {
+            background: rgba(30, 20, 15, 0.92);
+            border: 3px solid #8d6e63;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.6);
+        }
+        /* Virtual D-pad / Joystick for touch */
+        .dpad-btn {
+            background: rgba(40, 25, 20, 0.85);
+            border: 2px solid #8d6e63;
+            color: #f5f5f5;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        .dpad-btn:active {
+            background: #d97706;
+        }
+        /* Pulse for alert messages */
+        @keyframes subtle-bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+        .animate-bounce-subtle {
+            animation: subtle-bounce 1.5s infinite ease-in-out;
+        }
+        .storybook-preview {
+            display: none;
+            position: relative;
+            width: 100%;
+            aspect-ratio: 3 / 2;
+            overflow: hidden;
+            margin: 18px 0;
+            border: 5px solid #5a3827;
+            background: #ead9ae;
+            box-shadow: 0 5px 0 #2b1d18;
+        }
+        .storybook-preview.visible { display: block; }
+        .storybook-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .storybook-copy {
+            position: absolute;
+            left: 12%; right: 12%; top: 35%; bottom: 8%;
+            padding: 16px 20px;
+            overflow: hidden;
+            background: rgba(245, 238, 216, .82);
+            color: #201914;
+            font-family: Georgia, "Noto Serif TC", serif;
+            font-size: clamp(11px, 1.5vw, 17px);
+            line-height: 1.55;
+            white-space: pre-line;
+            text-shadow: 1px 1px #fff;
+        }
+        @media print {
+            body * { visibility: hidden !important; }
+            #storybook-preview, #storybook-preview * { visibility: visible !important; }
+            #storybook-preview { display: block !important; position: fixed; inset: 0; width: 100vw; height: 100vh; margin: 0; border: 0; box-shadow: none; }
+            .storybook-copy { font-size: 20px; }
+        }
+
+        /* Student readability pass: larger HUD text and a moonlit night that keeps the farm visible. */
+        #ui-layer { font-size: 15px; }
+        #ui-layer .pixel-box { border-width: 3px; }
+        #ui-layer .pixel-box > .flex.items-center { min-height: 34px; }
+        #hud-cycle-title { font-size: 1.25rem !important; }
+        #hud-timer-badge { font-size: 0.95rem !important; padding: 0.3rem 0.55rem !important; }
+        #ui-layer .grid.grid-cols-2 { font-size: 1rem; line-height: 1.65; row-gap: .25rem; }
+        #ui-layer .grid.grid-cols-2 > div:nth-child(odd) { color: #f0e7d3; }
+        #ui-layer .grid.grid-cols-2 > div:nth-child(even) { font-size: 1.05rem; }
+        #toast-banner { font-size: 1.05rem !important; padding: .75rem 1.1rem !important; }
+        #btn-trap-mode { font-size: 1rem !important; line-height: 1.35; }
+        #hud-trap-stock { font-size: .9rem !important; }
+        #ui-layer .min-w-\[170px\] > div { font-size: .92rem !important; line-height: 1.55; color: #eee4d2; }
+        #ui-layer > .flex.items-end > div { font-size: 1rem !important; line-height: 1.55; max-width: 30rem; }
+        #dialogue-panel { font-size: 1rem; }
+        #dialogue-panel { padding: 1.35rem !important; }
+        #dialogue-name { font-size: 1.35rem !important; }
+        #dialogue-content { font-size: 1.45rem !important; line-height: 1.95 !important; min-height: 6rem; }
+        #dialogue-hint, #dialogue-tag { font-size: 1.08rem !important; line-height: 1.65; }
+        #btn-close-dialogue, #dialogue-panel button { font-size: 1.12rem; }
+        #dialogue-next-guide { margin: .75rem 0 1rem; padding: .75rem .9rem; border: 2px solid #38bdf8; border-radius: .55rem; background: rgba(8, 47, 73, .86); color: #e0f2fe; box-shadow: inset 0 0 0 1px rgba(186,230,253,.18); }
+        #dialogue-next-guide strong { color: #7dd3fc; font-size: 1.05rem; }
+        #dialogue-next-guide small { display: block; margin-top: .2rem; color: #dbeafe; font-size: .95rem; line-height: 1.55; }
+        #btn-follow-next { margin-top: .55rem; padding: .4rem .7rem; border-radius: .35rem; background: #0284c7; color: white; font-weight: 900; }
+        #top-hud { max-width: none !important; margin-left: 0 !important; margin-right: 0 !important; justify-content: flex-start; }
+        #top-hud > .min-w-\[170px\] { margin-left: auto; }
+        #top-hud .pixel-box { padding: 1.1rem !important; }
+        #top-hud .grid.grid-cols-2 { font-size: 1.12rem; line-height: 1.8; }
+        #top-hud .grid.grid-cols-2 > div:nth-child(even) { text-align: left !important; font-size: 1.16rem; }
+        #injured-list-panel { position: absolute; left: 1rem; top: 14rem; z-index: 20; width: min(22rem, calc(100vw - 2rem)); }
+        #injured-list-panel button { width: 100%; text-align: left; padding: .65rem .8rem; margin-top: .35rem; border: 2px solid #f59e0b; border-radius: .45rem; background: #3b2418; color: #fff7ed; font-size: 1rem; font-weight: 900; }
+        #injured-list-panel button:hover { background: #7c2d12; }
+        #clue-board { position: absolute; left: 1rem; top: 20rem; z-index: 19; width: min(23rem, calc(100vw - 2rem)); }
+        #clue-board .clue-row { padding: .4rem .55rem; margin-top: .3rem; border-left: 4px solid #64748b; background: rgba(15,23,42,.78); color: #cbd5e1; font-size: .94rem; line-height: 1.45; }
+        #clue-board .clue-row.found { border-left-color: #fbbf24; color: #fef3c7; background: rgba(92,52,12,.88); }
+        #world-directions { position: absolute; inset: 0; z-index: 9; pointer-events: none; font-size: 1.08rem; font-weight: 900; color: #fff7ed; text-shadow: 0 2px 0 #29150e, 0 0 8px #29150e; }
+        #world-directions span { position: absolute; padding: .3rem .65rem; border: 2px solid rgba(255,237,213,.75); border-radius: .45rem; background: rgba(41,21,14,.7); }
+        #world-directions .north { top: 8.5rem; left: 50%; transform: translateX(-50%); color: #bae6fd; }
+        #world-directions .south { bottom: 1.2rem; left: 50%; transform: translateX(-50%); color: #fed7aa; }
+        #world-directions .west { left: 1rem; top: 52%; color: #ddd6fe; }
+        #world-directions .east { right: 1rem; top: 52%; color: #bbf7d0; }
+        #world-directions .compass-note { top: 11.6rem; left: 50%; transform: translateX(-50%); border: 0; padding: 0; background: transparent; color: #fef3c7; font-size: .85rem; font-weight: 700; }
+        @media (max-width: 700px) { #world-directions { font-size: .9rem; } #world-directions .compass-note { top: 10.5rem; font-size: .72rem; } }
+    </style>
+</head>
+<body class="relative">
+    <script>
+        // Static-site gate: the play page is entered through index.html only.
+        if (sessionStorage.getItem("farm-play-access") !== "granted-once") {
+            window.location.replace("../index.html");
+        } else {
+            sessionStorage.removeItem("farm-play-access");
+        }
+    </script>
+    <div id="webgl-container" class="w-full h-full absolute inset-0">
+        <canvas id="webgl-canvas"></canvas>
+    </div>
+
+    <div id="ui-layer" class="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 md:p-6 z-10">
+        <!-- Top Stats Bar -->
+        <div id="top-hud" class="flex flex-wrap items-start justify-between gap-3 pointer-events-auto w-full max-w-5xl mx-auto">
+            <!-- Left Info Panel -->
+            <div class="pixel-box rounded-lg p-3 text-white min-w-[240px]">
+                <div class="flex items-center justify-between pb-1 mb-2 border-b border-stone-700">
+                    <span id="hud-cycle-title" class="text-base font-black tracking-wide text-amber-300">時段：白天</span>
+                    <span id="hud-timer-badge" class="px-2 py-0.5 rounded text-xs font-bold bg-amber-900 text-amber-200">剩餘 40 秒</span>
+                </div>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                    <div class="text-stone-400">消滅野狼目標:</div>
+                    <div id="hud-wolf-count" class="font-bold text-emerald-400 text-right">0 / 4 隻</div>
+                    <div class="text-stone-400">農場犧牲動物:</div>
+                    <div id="hud-dead-count" class="font-bold text-rose-400 text-right">0 / 3 隻</div>
+                    <div id="hud-injured-label" class="text-stone-400 cursor-pointer">受傷待救助:</div>
+                    <div id="hud-injured-count" class="font-bold text-amber-400 text-right cursor-pointer" title="點擊查看受傷動物">0 隻</div>
+                    <div class="text-stone-400">恐慌受驚嚇:</div>
+                    <div id="hud-panic-count" class="font-bold text-yellow-300 text-right">0 隻</div>
+                    <div class="text-stone-400">巡守回合:</div>
+                    <div id="hud-round-count" class="font-bold text-sky-300 text-right">0 / 30</div>
+                </div>
+            </div>
+
+            <!-- Center Notification Toast -->
+            <div id="toast-banner" class="hidden pixel-box px-4 py-2.5 rounded-lg border-amber-600 bg-stone-900/95 text-center text-sm font-bold text-amber-200 shadow-xl max-w-md animate-bounce-subtle">
+                提示訊息
+            </div>
+
+            <!-- Right Controls Panel -->
+            <div class="pixel-box rounded-lg p-3 flex flex-col gap-2 min-w-[170px]">
+                <button id="btn-trap-mode" class="w-full py-2 px-3 rounded bg-amber-800 hover:bg-amber-700 active:bg-amber-900 border-2 border-amber-600 text-white font-bold text-xs tracking-wider transition-all flex flex-col items-center">
+                    <span>放置獸夾模式</span>
+                    <span id="hud-trap-stock" class="text-[11px] text-amber-200 font-normal mt-0.5">剩餘：5 個</span>
+                </button>
+                <div class="text-[11px] text-stone-400 text-center leading-tight">
+                    點擊地面自動前進<br>走近動物點擊對談與救助
+                </div>
+            </div>
+        </div>
+
+        <div id="world-directions" aria-label="農場方向標記">
+            <span class="north">北 N</span>
+            <span class="south">南 S</span>
+            <span class="west">西 W</span>
+            <span class="east">東 E</span>
+            <span class="compass-note">地圖方向：上方為北，右方為東</span>
+        </div>
+
+        <div id="injured-list-panel" class="hidden pointer-events-auto pixel-box rounded-xl p-3 text-white">
+            <div class="text-amber-300 font-black text-lg border-b border-stone-700 pb-2">受傷動物名單</div>
+            <div id="injured-list-items" class="mt-2"></div>
+        </div>
+
+        <div id="clue-board" class="pointer-events-none pixel-box rounded-xl p-3 text-white">
+            <div class="text-sky-300 font-black text-lg border-b border-stone-700 pb-2">狼群方向線索</div>
+            <div id="clue-sheep" class="clue-row">黑鼻羊：尚未查明牠做過的壞事</div>
+            <div id="clue-north" class="clue-row">北方：尚未查明</div>
+            <div id="clue-west" class="clue-row">西方：尚未查明</div>
+            <div id="clue-southeast" class="clue-row">東南方：尚未查明</div>
+            <div id="clue-south" class="clue-row">南方：尚未查明</div>
+        </div>
+
+        <!-- Help Notice & Mobile Dpad -->
+        <div class="flex items-end justify-between w-full pointer-events-none mt-auto">
+            <div class="pointer-events-none bg-black/70 backdrop-blur-sm text-stone-200 px-3 py-2 rounded-lg text-xs border border-stone-700 max-w-sm">
+                <span class="text-amber-400 font-bold">操作方式：</span>點擊地面，角色會自動走到指定位置並繞過障礙物。走近動物即可對談；開啟獸夾模式後點擊附近地面放夾。
+            </div>
+
+        </div>
+
+        <!-- Bottom Dialogue Box -->
+        <div id="dialogue-panel" class="hidden pointer-events-auto w-full max-w-3xl mx-auto pixel-box rounded-xl p-4 md:p-5 text-white shadow-2xl relative border-amber-700 mb-2">
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-stone-700">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 bg-amber-500 rounded-sm inline-block"></span>
+                    <h3 id="dialogue-name" class="font-black text-lg text-amber-300">動物名</h3>
+                    <span id="dialogue-tag" class="text-xs px-2 py-0.5 rounded bg-stone-800 text-stone-300 border border-stone-600">正常狀態</span>
+                </div>
+                <button id="btn-close-dialogue" class="text-stone-400 hover:text-white px-2 py-1 text-sm font-bold">關閉</button>
+            </div>
+            
+            <p id="dialogue-content" class="text-stone-200 text-sm md:text-base leading-relaxed min-h-[50px] mb-4">
+                對話內容讀取中...
+            </p>
+
+            <div id="dialogue-next-guide" class="hidden">
+                <strong id="dialogue-next-title">下一位角色</strong>
+                <small id="dialogue-next-detail"></small>
+                <button id="btn-follow-next" type="button">引導前往這位角色</button>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-stone-800 text-xs">
+                <span id="dialogue-hint" class="text-stone-400">點擊安撫可平息動物的恐懼情緒</span>
+                <div class="flex gap-2">
+                    <button id="btn-action-soothe" class="hidden px-4 py-2 rounded font-bold bg-amber-600 hover:bg-amber-500 text-stone-900 transition-all">
+                        摸摸頭（安撫）
+                    </button>
+                    <button id="btn-action-rescue" class="hidden px-4 py-2 rounded font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all">
+                        抱回紅農舍治療
+                    </button>
+                    <button id="btn-dialogue-ok" class="px-5 py-2 rounded font-bold bg-stone-700 hover:bg-stone-600 text-white transition-all">
+                        知道了
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-endgame" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+        <div class="pixel-box max-w-lg w-full rounded-2xl p-6 text-center text-white border-4 border-amber-600">
+            <h2 id="modal-title" class="text-2xl font-black mb-3 text-amber-400">通關結果</h2>
+            <p id="modal-desc" class="text-stone-300 text-sm leading-relaxed mb-6">
+                故事結尾敘述...
+            </p>
+            <div id="storybook-preview" class="storybook-preview">
+                <img src="../assets/storybook-background.webp" alt="動物農場繪本底圖">
+                <div id="storybook-copy" class="storybook-copy"></div>
+            </div>
+            <div class="flex flex-wrap gap-2 justify-center mb-5">
+                <button id="btn-generate-storybook" class="hidden px-4 py-2 rounded-lg font-black text-sm bg-sky-600 hover:bg-sky-500 text-white transition-all">生成繪本頁</button>
+                <button id="btn-print-storybook" class="hidden px-4 py-2 rounded-lg font-black text-sm bg-emerald-600 hover:bg-emerald-500 text-white transition-all">列印繪本</button>
+            </div>
+            <button id="btn-restart" class="px-6 py-3 rounded-lg font-black text-sm bg-amber-600 hover:bg-amber-500 text-stone-950 transition-all shadow-lg">
+                重新巡守農場
+            </button>
+        </div>
+    </div>
+
+    <script>
+    const SoundAudio = {
+        ctx: null,
+        init() {
+            if (!this.ctx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    this.ctx = new AudioContextClass();
+                }
+            }
+            if (this.ctx && this.ctx.state === 'suspended') {
+                this.ctx.resume();
+            }
+        },
+        playPop() {
+            this.init();
+            if (!this.ctx) return;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(640, this.ctx.currentTime + 0.08);
+            gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.09);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.09);
+        },
+        playTrapSet() {
+            this.init();
+            if (!this.ctx) return;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(140, this.ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(90, this.ctx.currentTime + 0.12);
+            gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.13);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.13);
+        },
+        playTrapSnap() {
+            this.init();
+            if (!this.ctx) return;
+            // Metal snap and wolf hit
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(450, this.ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(60, this.ctx.currentTime + 0.28);
+            gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.29);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.29);
+        },
+        playHeal() {
+            this.init();
+            if (!this.ctx) return;
+            const now = this.ctx.currentTime;
+            [440, 554, 659, 880].forEach((freq, idx) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = "triangle";
+                osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                gain.gain.setValueAtTime(0.12, now + idx * 0.08);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.08 + 0.18);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now + idx * 0.08);
+                osc.stop(now + idx * 0.08 + 0.19);
+            });
+        },
+        playWolfAttack() {
+            this.init();
+            if (!this.ctx) return;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(160, this.ctx.currentTime);
+            osc.frequency.linearRampToValueAtTime(50, this.ctx.currentTime + 0.4);
+            gain.gain.setValueAtTime(0.28, this.ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.4);
+        },
+        playCycleShift(isNight) {
+            this.init();
+            if (!this.ctx) return;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "sine";
+            const startF = isNight ? 380 : 180;
+            const endF = isNight ? 120 : 540;
+            osc.frequency.setValueAtTime(startF, this.ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(endF, this.ctx.currentTime + 0.45);
+            gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.46);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.46);
+        }
+    };
+    </script>
+
+    <script>
+    const DIALOGUES_DATA = {
+        sheep: {
+            name: "羊",
+            problem: "黑鼻羊貝克曾反覆謊稱狼來了，大家因此不再相信牠；如今牠其實是因罪惡感與恐懼而持續造謠。",
+            truth: "牠不是英勇打敗野狼，而是在北邊臭水溝跌倒受傷，害怕被大家嘲笑才說謊。",
+            wolfLocations: ["北邊臭水溝", "西邊木門", "東南矮圍牆", "南邊廢果園"],
+            wolfClue: { key: "north", text: "線索：野狼會從北方的臭水溝進入農場。" },
+            nextCharacter: "cow",
+            normal: [
+                "哎喲……痛痛痛！我才沒事呢！我可是上次幫大家解決牧草危機的羊！",
+                "我這條腿是昨晚在樹林裡跟大野狼打架弄傷的！我一腳就把牠踢飛了，牠們今晚要從東門衝進來，大家快去東邊！"
+            ],
+            rumor_spread: "牛！連我都差點受重傷，大野狼真的很可怕，你今晚千萬不能留在空地上！",
+            panicked: [
+                "（小聲自言自語）慘了……大家怎麼全部當真了！我昨晚只是偷溜去後山摘甜莓果跌進臭水溝而已啊……"
+            ],
+            injured: "嗚嗚嗚……好痛喔！這次不是扭傷，是真的有黑影咬我！快帶我回紅農舍擦藥！",
+            post_rescue: "對不起……我怕大家笑我，才說謊跟狼打架……我其實是在「北邊臭水溝」摔傷的，那裡的泥巴上真的有野狼的腳印！"
+        },
+        pig: {
+            name: "豬",
+            nextCharacter: "dog",
+            wolfClue: { key: "southeast", text: "線索：東南方的矮圍牆破了一個洞，野狼可能從那裡鑽進來。" },
+            suspicious: [
+                "呼嚕……等等，羊每次都說狼在不同地方，泥坑、池塘、東邊柵欄怎麼可能同時都有狼？",
+                "我開始懷疑羊了。牠說得越急，大家就越不敢靠近那些地方。"
+            ],
+            normal: [
+                "呼嚕嚕……上次草不夠吃，多虧羊幫忙算分配，大家才沒挨餓。",
+                "連那麼聰明的羊都被野狼打傷，外面的野狼一定超級兇對不對？"
+            ],
+            panicked: [
+                "哇啊啊！羊說狼要從東門打過來了！羊說的一定沒錯！大家快逃啊！",
+                "走開走開！我要挖個泥巴洞把自己藏起來，我才不要被狼抓走！"
+            ],
+            comforted: "呼……拍拍肚子。你說羊剛才講話眼睛在亂飄？咦……不過昨晚菜園旁邊的「東南矮圍牆」確實破了個大洞呢。",
+            injured: "痛痛痛！我的小尾巴被咬到了啦！走不動了，快送我去紅農舍！",
+            post_rescue: "農舍好溫暖喔。雖然羊很聰明，但昨晚的聲音真的在「東南矮圍牆」那邊，大鐵夾放那裡就對了！"
+        },
+        cow: {
+            name: "牛",
+            nextCharacter: "horse",
+            suspicious: ["哞……羊說的路線一直變來變去，我們是不是應該先查證，而不是跟著牠跑？"],
+            normal: [
+                "哞～上次沒有牧草時，多虧羊想辦法，大家都很謝謝牠。",
+                "看牠一跛一跛的真讓人心疼，到底是什麼壞野狼把牠打傷的？"
+            ],
+            panicked: [
+                "哞嗷嗷！羊剛才親口跟我說大野狼要來了！連羊都這麼說，今晚一定大難臨頭了！",
+                "你們別靠近我，我要把草棚的大門全部用稻草堵死！"
+            ],
+            comforted: "呼……深呼吸一下。你說得對，羊有時候也是會愛面子的。我昨晚聞到的臭味確實是從「北邊樹林」飄過來的！",
+            injured: "哎唷……腿被抓傷了，站不起來了……快扶我進紅農舍……",
+            post_rescue: "謝謝你幫我包紮。北邊小路又窄又臭，把大鐵夾放路中間，大野狼一定踩上去！"
+        },
+        horse: {
+            name: "馬",
+            nextCharacter: "dog",
+            normal: [
+                "嘶——！羊上次規劃的運草路線很厲害，我很佩服牠！",
+                "不過牠說牠踢飛了野狼？奇怪了，論踢腿全農場誰能踢得過我？牠哪時候學會後踢的？"
+            ],
+            panicked: [
+                "嘶！羊說大野狼跑得比我還要快十倍！那我怎麼跑得贏啦？！",
+                "不要站在我後面！我現在很緊張，隨時會踢人喔！"
+            ],
+            comforted: "呼嚕嚕……摸摸鬃毛好多了。我就說嘛，哪有狼跑那麼快的！聽好囉，「西邊草地」那邊風很大，牠們會順風衝過來！",
+            injured: "腳好痛喔……馬蹄鐵掉了，跑不動了啦……",
+            post_rescue: "多虧有繃帶綁好！在西邊草地的小木橋上放獸夾，野狼順風衝過來絕對煞不住車！"
+        },
+        dog: {
+            name: "狗",
+            nextCharacter: "cat",
+            wolfClue: { key: "west", text: "線索：西方木門下方有狼味，野狼可能從西門突入。" },
+            suspicious: ["汪！我守門這麼久，沒聞到泥坑和池塘都有狼味。羊的說法很可疑！"],
+            normal: [
+                "汪汪！我很敬佩羊解決過牧草危機，但巡邏是我的工作！",
+                "牠今天走路怪怪的，說是跟狼打架……可我怎麼聞到牠後腿有一股臭水溝泥巴味道啊？"
+            ],
+            panicked: [
+                "嗚嗚……汪！大家把羊的話當真，全擠在東門，西門根本沒人顧！我一隻狗怎麼看守啦！",
+                "大家冷靜一點！聽我看守的經驗好不好！"
+            ],
+            comforted: "汪！謝謝你願意聽我說！羊太愛面子了，不好意思承認自己跌倒啦。「西邊木門」下面有個破洞，那裡真的有狼味！",
+            injured: "嗷嗚……鼻子被抓了一把，流血了啦……快帶我去紅農舍擦藥……",
+            post_rescue: "汪！精神來了！羊也是怕丟臉才吹牛的，大家別怪牠，今晚我們一起抓野狼！"
+        },
+        cat: {
+            name: "貓",
+            nextCharacter: "crow",
+            normal: [
+                "喵～曬太陽真舒服。羊上次幫我在穀倉留了好位子，牠是隻好羊。",
+                "不過受傷就要老實擦藥，逞強裝沒事，身上的味道只會把真正的野狼引過來喔。"
+            ],
+            panicked: [
+                "喵嗷——！全場都在傳羊說的話，說今晚大家都要完蛋了，弄得我也好緊張！",
+                "嘶——！別吵我！我在練習磨爪子防身！"
+            ],
+            comforted: "呼嚕呼嚕……抓抓下巴真舒服。羊就是愛面子嘛。我剛才在屋頂上看到「西北邊枯井」旁邊有踩碎的樹枝喔！",
+            injured: "喵嗚……從樹上掉下來扭到手手了，不能跳了啦……",
+            post_rescue: "紅農舍的軟墊好舒服喔。西北枯井旁邊雜草很多，在那裡放夾子，野狼絕對看不見！"
+        },
+        chicken: {
+            name: "雞",
+            nextCharacter: "duck",
+            normal: [
+                "咕咕、咯咯！羊最照顧大家了，上次牧草不夠時，牠還幫忙勻出飼料給我們。",
+                "看到羊一跛一跛的，我都快哭了……野狼怎麼這麼壞啦！"
+            ],
+            panicked: [
+                "咯咯噠——！羊說大野狼要攻打東門，可是我的雞舍在最南邊耶！沒有大家保護我該怎麼辦啦！",
+                "不要抓我！我只是一顆長著羽毛的羽毛球！"
+            ],
+            comforted: "咯咯……呼，謝謝你抱住我。昨晚抓門的聲音真的在「南邊雞舍正後方」，那邊圍籬破了個洞！",
+            injured: "咕咕……羽毛被撕掉好多根，屁股好痛喔，走不動了……",
+            post_rescue: "咕咕噠！擦了藥好舒服喔！把夾子放在雞舍後面的小草堆裡，野狼想偷溜進來就會被夾住！"
+        },
+        duck: {
+            name: "鴨",
+            nextCharacter: "goose",
+            normal: [
+                "呱呱！羊上次教我們在乾旱時挖深水塘，牠好聰明喔！",
+                "羊說野狼好大一隻，我也想幫忙，但我只有兩隻短短的腳蹼……"
+            ],
+            panicked: [
+                "呱啊啊！大家都跟著羊往東門跑，水塘都被踩扁了！我不知道該躲去哪裡啦！",
+                "不要拉我的腳蹼！水裡有怪物啦！"
+            ],
+            comforted: "呱……摸摸羽毛好安心喔。大家太慌張了對不對？其實我昨天在「東邊水閘門」的淺水灘看到漂著幾根狼毛喔！",
+            injured: "呱嗚……腳蹼被石頭割破了，游不快了啦……",
+            post_rescue: "呱呱！農舍裡竟然有小碎玉米可以吃耶！把夾子藏在水閘門淺淺的水灘裡，野狼一定踩中！"
+        },
+        goose: {
+            name: "鵝",
+            nextCharacter: "crow",
+            normal: [
+                "浹——！頭抬高、胸部挺起來！雖然羊上次解決了牧草危機值得誇獎，但水塘還是我說了算！",
+                "牠說牠單挑野狼？哼，這話聽起來怪怪的，我看八成是自己跌倒嘴硬吧！"
+            ],
+            panicked: [
+                "浹浹浹！全場都在傳羊的戰鬥故事，把我的隊伍搞得亂七八糟！氣死我了！",
+                "退後！通通退後！誰敢靠近我就啄誰！"
+            ],
+            comforted: "哼……算你識相，還知道拿新鮮菜葉來安撫我。昨晚我確實看見黑影沿著「東北邊蘆葦叢」摸進來，注意那裡！",
+            injured: "哎唷……脖子被抓傷了，快點帶我去紅農舍！",
+            post_rescue: "咳咳……農舍的軟墊挺舒服的。東北蘆葦叢地上全是爛泥巴，在那裡放夾子，野狼陷進去絕對拔不出來！"
+        },
+        crow: {
+            name: "烏鴉",
+            nextCharacter: "sparrow",
+            normal: [
+                "嘎——嘎！平時最聰明的羊，今天怎麼像個鴨子一樣一扭一扭的？笑死我了！",
+                "我知道牠的秘密喔～但我不說！聰明的羊也有出糗的時候，嘻嘻！"
+            ],
+            panicked: [
+                "嘎啊！地上的笨蛋們全相信羊的東門作戰，把森林的野狼引暴躁了！枯樹都在搖晃啦！",
+                "樹要倒了！世界末日了！嘎嘎嘎！"
+            ],
+            comforted: "嘎……摸摸頭真舒服。看在你誠懇的份上：昨晚羊是溜去後山採野莓啦！但牠跌倒的「北邊水溝」，剛好就是野狼來的小路！",
+            injured: "撲稜撲稜……翅膀被樹枝拉傷了，掉在地上飛不起來啦……",
+            post_rescue: "嘎——！翅膀擦了亮晶晶藥膏真帥氣！天黑時野狼一定會從北邊水溝衝出來，在那裡放兩個大鐵夾！"
+        },
+        sparrow: {
+            name: "麻雀",
+            nextCharacter: "pigeon",
+            wolfClue: { key: "south", text: "線索：南方廢果園的草叢被壓倒，野狼可能從南邊靠近。" },
+            normal: [
+                "啾啾！羊最厲害了！上次沒有牧草時，全靠牠幫大家算好分量，我們才沒挨餓！",
+                "看到牠一跛一跛受傷，大家都好緊張喔，我也好想幫牠吹吹痛痛飛走！"
+            ],
+            panicked: [
+                "啾啾啾——！羊說野狼有一百隻！連果樹都要被啃光！那我住哪裡啦！",
+                "不要看我！我只是一顆毛線球，我很難吃喔！"
+            ],
+            comforted: "啾……摸摸小肚子好溫暖喔。羊每次緊張就會把數字誇大十倍，嘻嘻。不過「南邊廢果園」那邊真的有大腳印喔！",
+            injured: "啾嗚……小爪子被刺草扎破了，走不動了，好痛喔……",
+            post_rescue: "啾！農舍的小米真好吃！南邊果園有兩顆大石頭，中間的路窄窄的，把夾子放那裡剛剛好！"
+        },
+        pigeon: {
+            name: "鴿子",
+            nextCharacter: "sheep",
+            normal: [
+                "咕、咕、咕。羊這孩子是我們看著長大的，心腸好、腦子靈，就是自尊心強了點。",
+                "大家太相信牠了，所以牠說什麼大家就信什麼。這時候更需要冷靜下來看清真相啊。"
+            ],
+            panicked: [
+                "咕哇！全場動物都跟著羊在恐慌，我的心臟快受不了了！大家都盲目了啊！",
+                "咳咳咳！老骨頭經不起嚇啦！"
+            ],
+            comforted: "咕……喝口溫水順順氣。謝謝你。再聰明的孩子也是會犯錯的，別苛責牠。今晚野狼會從北渠、西門、東南、南果園四路過來，都要防守好。",
+            injured: "哎唷……老翅膀折到了，掉在穀倉旁邊動不了……",
+            post_rescue: "咕咕……感謝救命。把四個大夾子擺在四條小路正中央，就能打破三十年的恐懼詛咒囉！"
+        }
+    };
+    </script>
+
+    <script>
+    const GameState = {
+        phase: "Day", // "Day" or "Night"
+        timer: 40,
+        dayDuration: 40,
+        nightDuration: 22,
+        wolvesKilled: 0,
+        round: 0,
+        maxRounds: 30,
+        animalsDead: 0,
+        wolvesNeeded: 4,
+        maxDeadAllowed: 3,
+        trapInventory: 5,
+        isPlacingTrap: false,
+        traps: [], // { id, x, z, mesh }
+        wolves: [], // { id, x, z, mesh, targetId, isDead }
+        storyLog: [],
+        selectedAnimalId: null,
+        nextGuideTargetId: null,
+        discoveredClues: {},
+        pendingSheepDialogue: null,
+        sheepRumorCount: 0,
+        sheepSuspected: false,
+        dogGuardNoticeRound: -1,
+        gameOver: false,
+
+        // Player Character State
+        player: {
+            x: 2,
+            z: 8,
+            speed: 8.5,
+            mesh: null,
+            moving: false,
+            destination: null,
+            path: [],
+            pathGoal: null,
+            guidedTargetId: null,
+            autoRescueTargetId: null,
+            autoRescuePhase: null,
+            carryingAnimalId: null,
+            keys: { up: false, down: false, left: false, right: false }
+        },
+
+        // Solid obstacle colliders (AABB bounding boxes: xMin, xMax, zMin, zMax)
+        colliders: [
+            // Red Farmhouse Wall Body
+            { xMin: -7.0, xMax: 1.0, zMin: -7.5, zMax: -0.5, name: "Farmhouse" },
+            // Water Pond (East)
+            { xMin: 5.5, xMax: 16.5, zMin: -2.5, zMax: 10.5, name: "Pond" },
+            // North Trench (Mud channel)
+            { xMin: -8.5, xMax: 8.5, zMin: -16.0, zMax: -12.0, name: "NorthDitch" },
+            // Voxel Trees (Trunks)
+            { xMin: -7.8, xMax: -6.2, zMin: -9.8, zMax: -8.2, name: "Tree1" },
+            { xMin: 13.2, xMax: 14.8, zMin: -12.8, zMax: -11.2, name: "Tree2" },
+            { xMin: -14.8, xMax: -13.2, zMin: 7.2, zMax: 8.8, name: "Tree3" },
+            // Fences
+            { xMin: -12.5, xMax: -3.5, zMin: 11.5, zMax: 12.5, name: "Fence1" },
+            { xMin: 11.5, xMax: 12.5, zMin: -8.5, zMax: 0.5, name: "Fence2" }
+        ],
+
+        // 12 Animals
+        animals: [
+            { id: "sheep", name: "羊", x: -11, z: 1, status: "normal", isLimping: true, lastRumorTarget: null },
+            { id: "pig", name: "豬", x: 4, z: 13, status: "normal" },
+            { id: "cow", name: "牛", x: 16, z: -6, status: "normal" },
+            { id: "horse", name: "馬", x: -18, z: 12, status: "normal" },
+            { id: "dog", name: "狗", x: -23, z: -3, status: "normal" },
+            { id: "cat", name: "貓", x: -9, z: 5, status: "normal" },
+            { id: "chicken", name: "雞", x: 5, z: 20, status: "normal" },
+            { id: "duck", name: "鴨", x: 20, z: 12, status: "normal" },
+            { id: "goose", name: "鵝", x: 20, z: -2, status: "normal" },
+            { id: "crow", name: "烏鴉", x: -13, z: -19, status: "normal" },
+            { id: "sparrow", name: "麻雀", x: -15, z: 22, status: "normal" },
+            { id: "pigeon", name: "鴿子", x: -17, z: -10, status: "normal" },
+            // Additional farm companions populate the expanded map.
+            { id: "pig_2", species: "pig", name: "小花豬", x: -25, z: 18, status: "normal" },
+            { id: "pig_3", species: "pig", name: "泥泥", x: 14, z: 22, status: "normal" },
+            { id: "cow_2", species: "cow", name: "小乳牛", x: 25, z: -16, status: "normal" },
+            { id: "horse_2", species: "horse", name: "栗子馬", x: -24, z: 23, status: "normal" },
+            { id: "dog_2", species: "dog", name: "小牧羊犬", x: -29, z: -16, status: "normal" },
+            { id: "cat_2", species: "cat", name: "橘寶", x: 12, z: -24, status: "normal" },
+            { id: "chicken_2", species: "chicken", name: "白羽雞", x: -2, z: 28, status: "normal" },
+            { id: "duck_2", species: "duck", name: "小綠頭鴨", x: 27, z: 15, status: "normal" },
+            { id: "goose_2", species: "goose", name: "灰雁", x: 26, z: -8, status: "normal" },
+            { id: "crow_2", species: "crow", name: "小黑翼", x: 18, z: -25, status: "normal" },
+            { id: "sparrow_2", species: "sparrow", name: "啾啾", x: -22, z: 29, status: "normal" },
+            { id: "pigeon_2", species: "pigeon", name: "信使", x: -26, z: -26, status: "normal" }
+        ],
+
+        // Farmhouse safe treatment coords
+        // Front-of-house handoff point; keep animals outside the farmhouse collider.
+        farmhousePos: { x: -3, z: 1.3 },
+
+        getAnimal(id) {
+            return this.animals.find(a => a.id === id);
+        },
+
+        // Check if moving to (nx, nz) causes a collision with obstacles or map limits
+        canMoveTo(nx, nz, radius = 0.4) {
+            // Expanded map boundaries (-33 to 33)
+            if (nx < -33 || nx > 33 || nz < -33 || nz > 33) return false;
+
+            for (let i = 0; i < this.colliders.length; i++) {
+                const c = this.colliders[i];
+                if (nx + radius > c.xMin && nx - radius < c.xMax &&
+                    nz + radius > c.zMin && nz - radius < c.zMax) {
+                    return false;
+                }
+            }
+            return true;
+        },
+
+        // Grid A* substitute: breadth-first search is predictable for this small farm map.
+        findPath(startX, startZ, targetX, targetZ, radius = 0.45) {
+            const snap = (value) => Math.max(-32, Math.min(32, Math.round(value)));
+            const start = { x: snap(startX), z: snap(startZ) };
+            const goal = { x: snap(targetX), z: snap(targetZ) };
+            const key = (x, z) => `${x},${z}`;
+            const queue = [start];
+            const cameFrom = new Map([[key(start.x, start.z), null]]);
+            const dirs = [
+                [1, 0], [-1, 0], [0, 1], [0, -1],
+                [1, 1], [1, -1], [-1, 1], [-1, -1]
+            ];
+            let found = false;
+            while (queue.length) {
+                const current = queue.shift();
+                if (current.x === goal.x && current.z === goal.z) { found = true; break; }
+                for (const [dx, dz] of dirs) {
+                    const nx = current.x + dx;
+                    const nz = current.z + dz;
+                    const nextKey = key(nx, nz);
+                    if (cameFrom.has(nextKey) || !this.canMoveTo(nx, nz, radius)) continue;
+                    if (dx !== 0 && dz !== 0 && (!this.canMoveTo(current.x + dx, current.z, radius) || !this.canMoveTo(current.x, current.z + dz, radius))) continue;
+                    cameFrom.set(nextKey, current);
+                    queue.push({ x: nx, z: nz });
+                }
+            }
+            if (!found) return [];
+            const path = [];
+            let cursor = goal;
+            while (cursor && !(cursor.x === start.x && cursor.z === start.z)) {
+                path.unshift({ x: cursor.x, z: cursor.z });
+                cursor = cameFrom.get(key(cursor.x, cursor.z));
+            }
+            return path;
+        }
+    };
+    </script>
+
+    <script>
+    const FarmWorld = {
+        scene: null,
+        camera: null,
+        renderer: null,
+        controls: null,
+        dirLight: null,
+        ambientLight: null,
+        sunPivot: null,
+        sunMesh: null,
+        moonMesh: null,
+        
+        animalMeshes: {},
+        trapMeshes: {},
+        wolfMeshes: {},
+        raycaster: new THREE.Raycaster(),
+        mouse: new THREE.Vector2(),
+
+        init() {
+            const container = document.getElementById('webgl-container');
+            const canvas = document.getElementById('webgl-canvas');
+
+            // 1. Scene setup
+            this.scene = new THREE.Scene();
+            this.scene.background = new THREE.Color(0x76b852);
+            this.scene.fog = new THREE.FogExp2(0x76b852, 0.015);
+
+            // 2. Camera Setup (Orthographic isometric feel)
+            const aspect = window.innerWidth / window.innerHeight;
+            const frustum = 30;
+            this.camera = new THREE.OrthographicCamera(
+                -frustum * aspect, frustum * aspect,
+                frustum, -frustum,
+                0.1, 1000
+            );
+            this.camera.position.set(42, 44, 42);
+            this.camera.lookAt(0, 0, 0);
+
+            // 3. Renderer
+            this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            this.renderer.shadowMap.enabled = true;
+            this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            // 4. OrbitControls
+            this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+            this.controls.enableDamping = true;
+            this.controls.dampingFactor = 0.05;
+            this.controls.maxPolarAngle = Math.PI / 2.15;
+            this.controls.minZoom = 0.6;
+            this.controls.maxZoom = 2.0;
+
+            // 5. Sky, Sun, Moon & Lights
+            this.setupLighting();
+
+            // 6. Build Farm Environment (Ground, Red House, Water, Fences)
+            this.buildEnvironment();
+
+            // 7. Spawn Player Character
+            this.spawnPlayer();
+
+            // 8. Spawn 12 Voxel Animals
+            this.spawnAllAnimals();
+
+            window.addEventListener('resize', () => this.onResize());
+        },
+
+        spawnPlayer() {
+            const playerGroup = new THREE.Group();
+            playerGroup.position.set(GameState.player.x, 0, GameState.player.z);
+            playerGroup.name = "PlayerCharacter";
+            // Make the protagonist readable against the expanded farm map.
+            playerGroup.scale.set(1.45, 1.45, 1.45);
+
+            // Body (Blue Overalls)
+            const body = new THREE.Mesh(
+                new THREE.BoxGeometry(0.7, 0.85, 0.45),
+                new THREE.MeshLambertMaterial({ color: 0x1d4ed8 })
+            );
+            body.position.y = 0.85;
+            body.castShadow = true;
+            playerGroup.add(body);
+
+            // Head (Skin tone)
+            const head = new THREE.Mesh(
+                new THREE.BoxGeometry(0.55, 0.55, 0.55),
+                new THREE.MeshLambertMaterial({ color: 0xfbbf24 })
+            );
+            head.position.set(0, 1.55, 0);
+            head.castShadow = true;
+            playerGroup.add(head);
+
+            // Farmer Straw Hat (Tan Voxel Brim + Crown)
+            const hatBrim = new THREE.Mesh(
+                new THREE.BoxGeometry(1.0, 0.1, 1.0),
+                new THREE.MeshLambertMaterial({ color: 0xd97706 })
+            );
+            hatBrim.position.set(0, 1.85, 0);
+            const hatTop = new THREE.Mesh(
+                new THREE.BoxGeometry(0.6, 0.3, 0.6),
+                new THREE.MeshLambertMaterial({ color: 0xb45309 })
+            );
+            hatTop.position.set(0, 2.05, 0);
+            playerGroup.add(hatBrim, hatTop);
+
+            // Arms (Flannel shirt sleeves)
+            const leftArm = new THREE.Mesh(
+                new THREE.BoxGeometry(0.2, 0.65, 0.22),
+                new THREE.MeshLambertMaterial({ color: 0xb91c1c })
+            );
+            leftArm.position.set(-0.48, 0.85, 0);
+            leftArm.name = "LeftArm";
+            const rightArm = new THREE.Mesh(
+                new THREE.BoxGeometry(0.2, 0.65, 0.22),
+                new THREE.MeshLambertMaterial({ color: 0xb91c1c })
+            );
+            rightArm.position.set(0.48, 0.85, 0);
+            rightArm.name = "RightArm";
+            playerGroup.add(leftArm, rightArm);
+
+            // Legs
+            const leftLeg = new THREE.Mesh(
+                new THREE.BoxGeometry(0.24, 0.55, 0.26),
+                new THREE.MeshLambertMaterial({ color: 0x1e3a8a })
+            );
+            leftLeg.position.set(-0.18, 0.28, 0);
+            leftLeg.name = "LeftLeg";
+            const rightLeg = new THREE.Mesh(
+                new THREE.BoxGeometry(0.24, 0.55, 0.26),
+                new THREE.MeshLambertMaterial({ color: 0x1e3a8a })
+            );
+            rightLeg.position.set(0.18, 0.28, 0);
+            rightLeg.name = "RightLeg";
+            playerGroup.add(leftLeg, rightLeg);
+
+            this.scene.add(playerGroup);
+            GameState.player.mesh = playerGroup;
+        },
+
+        setupLighting() {
+            this.ambientLight = new THREE.AmbientLight(0xfff7e6, 0.65);
+            this.scene.add(this.ambientLight);
+
+            this.dirLight = new THREE.DirectionalLight(0xfff1cf, 0.95);
+            this.dirLight.position.set(24, 38, 16);
+            this.dirLight.castShadow = true;
+            this.dirLight.shadow.mapSize.width = 1024;
+            this.dirLight.shadow.mapSize.height = 1024;
+            this.dirLight.shadow.camera.left = -26;
+            this.dirLight.shadow.camera.right = 26;
+            this.dirLight.shadow.camera.top = 26;
+            this.dirLight.shadow.camera.bottom = -26;
+            this.scene.add(this.dirLight);
+
+            // Celestial Pivot for Sun and Moon
+            this.sunPivot = new THREE.Group();
+            this.scene.add(this.sunPivot);
+
+            // Big Minecraft Block Sun (Yellow Box)
+            const sunGeo = new THREE.BoxGeometry(5.2, 5.2, 5.2);
+            const sunMat = new THREE.MeshBasicMaterial({ color: 0xffe600 });
+            this.sunMesh = new THREE.Mesh(sunGeo, sunMat);
+            this.sunMesh.position.set(0, 38, 0);
+            this.sunPivot.add(this.sunMesh);
+
+            // Big Minecraft Block Moon (Deep Pale Blue Box)
+            const moonGeo = new THREE.BoxGeometry(4.2, 4.2, 4.2);
+            const moonMat = new THREE.MeshBasicMaterial({ color: 0xbed7f2 });
+            this.moonMesh = new THREE.Mesh(moonGeo, moonMat);
+            this.moonMesh.position.set(0, -38, 0);
+            this.sunPivot.add(this.moonMesh);
+        },
+
+        buildEnvironment() {
+            // Main Grass Ground Plane (Voxel Steppes)
+            const groundGeo = new THREE.BoxGeometry(70, 1.8, 70);
+            const groundMat = new THREE.MeshLambertMaterial({ color: 0x5a943a });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.position.y = -0.9;
+            ground.receiveShadow = true;
+            ground.name = "Ground";
+            this.scene.add(ground);
+
+            // Red Farmhouse (Center-West)
+            const house = new THREE.Group();
+            house.position.set(GameState.farmhousePos.x, 0, GameState.farmhousePos.z);
+
+            // Red Walls
+            const wallGeo = new THREE.BoxGeometry(7, 4.5, 6);
+            const wallMat = new THREE.MeshLambertMaterial({ color: 0xa82828 });
+            const wall = new THREE.Mesh(wallGeo, wallMat);
+            wall.position.y = 2.25;
+            wall.castShadow = true;
+            wall.receiveShadow = true;
+            house.add(wall);
+
+            // Roof
+            const roofGeo = new THREE.BoxGeometry(8, 2.2, 7);
+            const roofMat = new THREE.MeshLambertMaterial({ color: 0x4a2e1b });
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.y = 5.2;
+            roof.castShadow = true;
+            house.add(roof);
+
+            // Door
+            const doorGeo = new THREE.BoxGeometry(0.2, 2.8, 1.8);
+            const doorMat = new THREE.MeshLambertMaterial({ color: 0x301808 });
+            const door = new THREE.Mesh(doorGeo, doorMat);
+            door.position.set(3.55, 1.4, 0);
+            house.add(door);
+
+            // Red Cross on Farmhouse (Pure Cube cross for medical sign)
+            const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.4, 1.2), new THREE.MeshBasicMaterial({ color: 0xff2222 }));
+            crossH.position.set(3.62, 3.2, 0);
+            const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.2, 0.4), new THREE.MeshBasicMaterial({ color: 0xff2222 }));
+            crossV.position.set(3.62, 3.2, 0);
+            house.add(crossH);
+            house.add(crossV);
+
+            this.scene.add(house);
+
+            // Water Pond (East)
+            const pondGeo = new THREE.BoxGeometry(10, 0.3, 12);
+            const pondMat = new THREE.MeshLambertMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.85 });
+            const pond = new THREE.Mesh(pondGeo, pondMat);
+            pond.position.set(11, 0.1, 4);
+            pond.name = "WaterPond";
+            this.scene.add(pond);
+
+            // North Mud Channel / Trench (Ditch where sheep tripped)
+            const ditchGeo = new THREE.BoxGeometry(16, 0.4, 3.5);
+            const ditchMat = new THREE.MeshLambertMaterial({ color: 0x4e3e2e });
+            const ditch = new THREE.Mesh(ditchGeo, ditchMat);
+            ditch.position.set(0, 0.1, -14);
+            this.scene.add(ditch);
+
+            // Fence segments
+            this.createFenceSegment(-12, 12, 6, true);
+            this.createFenceSegment(12, -8, 5, false);
+
+            // Voxel Dead Tree in North (Crow's perching spot)
+            this.createVoxelTree(-7, -9);
+            this.createVoxelTree(14, -12);
+            this.createVoxelTree(-14, 8);
+
+            // Expanded farm districts: the extra landmarks make the larger map readable.
+            this.createVoxelTree(27, -25);
+            this.createVoxelTree(-28, -23);
+            this.createVoxelTree(27, 25);
+            this.createVoxelTree(-27, 27);
+            this.createFenceSegment(-30, -28, 12, true);
+            this.createFenceSegment(-30, 28, 12, true);
+            this.createFenceSegment(-30, -28, 12, false);
+            this.createFenceSegment(30, -28, 12, false);
+            this.createDistrictMarker("北方黑森林", 0, -27, 0x263238);
+            this.createDistrictMarker("南方果樹林", -8, 25, 0x5d4037);
+            this.createDistrictMarker("東側蘆葦塘", 24, 5, 0x1565c0);
+            this.createDistrictMarker("西側守備門", -25, 2, 0x795548);
+        },
+
+        createDistrictMarker(label, x, z, color) {
+            const marker = new THREE.Group();
+            marker.position.set(x, 0, z);
+            const post = new THREE.Mesh(new THREE.BoxGeometry(0.35, 2.4, 0.35), new THREE.MeshLambertMaterial({ color }));
+            post.position.y = 1.2;
+            const cap = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.45, 0.35), new THREE.MeshLambertMaterial({ color: 0xd7ccc8 }));
+            cap.position.y = 2.45;
+            marker.add(post, cap);
+            marker.name = "District_" + label;
+            this.scene.add(marker);
+        },
+
+        createFenceSegment(startX, startZ, count, horizontal) {
+            for (let i = 0; i < count; i++) {
+                const fencePost = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.4, 1.1, 0.4),
+                    new THREE.MeshLambertMaterial({ color: 0x8d5b32 })
+                );
+                const x = horizontal ? startX + i * 1.5 : startX;
+                const z = horizontal ? startZ : startZ + i * 1.5;
+                fencePost.position.set(x, 0.55, z);
+                fencePost.castShadow = true;
+                this.scene.add(fencePost);
+            }
+        },
+
+        createVoxelTree(x, z) {
+            const tree = new THREE.Group();
+            tree.position.set(x, 0, z);
+
+            const trunk = new THREE.Mesh(
+                new THREE.BoxGeometry(1.2, 4.5, 1.2),
+                new THREE.MeshLambertMaterial({ color: 0x4a3525 })
+            );
+            trunk.position.y = 2.25;
+            trunk.castShadow = true;
+            tree.add(trunk);
+
+            const leaf = new THREE.Mesh(
+                new THREE.BoxGeometry(3.5, 3.5, 3.5),
+                new THREE.MeshLambertMaterial({ color: 0x2e5b20 })
+            );
+            leaf.position.y = 5.2;
+            leaf.castShadow = true;
+            tree.add(leaf);
+
+            this.scene.add(tree);
+        },
+
+        // Helper to assemble pure BoxGeometry animals
+        spawnAllAnimals() {
+            GameState.animals.forEach(data => {
+                const grp = new THREE.Group();
+                grp.position.set(data.x, 0, data.z);
+                grp.name = "Animal_" + data.id;
+                // Larger voxel silhouettes give students a clear view of each animal's features.
+                grp.scale.set(1.55, 1.55, 1.55);
+
+                this.buildVoxelMeshForSpecies(grp, data.species || data.id);
+
+                // Add state markers (Status Indicator box above head)
+                const indicatorGrp = new THREE.Group();
+                indicatorGrp.name = "Indicator";
+                indicatorGrp.position.y = 2.3;
+
+                // 1. Red Cross Cube Group (for Injured status)
+                const injuredCubeH = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.65), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+                const injuredCubeV = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.65, 0.18), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+                injuredCubeH.name = "CrossH";
+                injuredCubeV.name = "CrossV";
+                injuredCubeH.visible = false;
+                injuredCubeV.visible = false;
+                indicatorGrp.add(injuredCubeH, injuredCubeV);
+
+                // 2. Yellow Exclamation Cube (for Panicked status - zero emoji, pure 3D cubes)
+                const panicStick = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.2), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+                panicStick.position.y = 0.15;
+                const panicDot = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.18, 0.2), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+                panicDot.position.y = -0.28;
+                panicStick.name = "PanicStick";
+                panicDot.name = "PanicDot";
+                panicStick.visible = false;
+                panicDot.visible = false;
+                indicatorGrp.add(panicStick, panicDot);
+
+                // Ability marker: black-nose sheep = rumor maker, dogs = wolf guard.
+                const abilityColor = (data.id === "sheep") ? 0xf59e0b : 0x38bdf8;
+                const abilityMarker = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.3, 0.5, 3),
+                    new THREE.MeshBasicMaterial({ color: abilityColor })
+                );
+                abilityMarker.name = "AbilityMarker";
+                abilityMarker.position.y = 0.48;
+                abilityMarker.visible = data.id === "sheep" || (data.species || data.id) === "dog";
+                indicatorGrp.add(abilityMarker);
+
+                grp.add(indicatorGrp);
+
+                this.scene.add(grp);
+                this.animalMeshes[data.id] = grp;
+            });
+        },
+
+        buildVoxelMeshForSpecies(group, id) {
+            let bodyColor = 0xf5f5f5;
+            let headColor = 0xf5f5f5;
+            let legColor = 0x888888;
+            let size = { w: 0.9, h: 0.8, d: 1.3 };
+
+            switch(id) {
+                case "sheep": // Black-nosed sheep
+                    bodyColor = 0xf8fafc;
+                    headColor = 0x1e293b;
+                    legColor = 0x334155;
+                    size = { w: 1.0, h: 0.85, d: 1.3 };
+                    break;
+                case "pig":
+                    bodyColor = 0xf472b6;
+                    headColor = 0xf472b6;
+                    legColor = 0xdb2777;
+                    size = { w: 0.85, h: 0.7, d: 1.3 };
+                    break;
+                case "cow":
+                    bodyColor = 0xe2e8f0;
+                    headColor = 0x1e293b;
+                    legColor = 0x475569;
+                    size = { w: 1.2, h: 1.2, d: 1.8 };
+                    break;
+                case "horse":
+                    bodyColor = 0x92400e;
+                    headColor = 0x78350f;
+                    legColor = 0x451a03;
+                    size = { w: 1.1, h: 1.5, d: 1.9 };
+                    break;
+                case "dog":
+                    bodyColor = 0xd97706;
+                    headColor = 0xb45309;
+                    legColor = 0x78350f;
+                    size = { w: 0.7, h: 0.75, d: 1.1 };
+                    break;
+                case "cat":
+                    bodyColor = 0xf59e0b;
+                    headColor = 0xd97706;
+                    legColor = 0xb45309;
+                    size = { w: 0.5, h: 0.45, d: 0.8 };
+                    break;
+                case "chicken":
+                    bodyColor = 0xffffff;
+                    headColor = 0xdc2626;
+                    legColor = 0xf59e0b;
+                    size = { w: 0.45, h: 0.55, d: 0.55 };
+                    break;
+                case "duck":
+                    bodyColor = 0x22c55e;
+                    headColor = 0x15803d;
+                    legColor = 0xf97316;
+                    size = { w: 0.5, h: 0.5, d: 0.75 };
+                    break;
+                case "goose":
+                    bodyColor = 0xffffff;
+                    headColor = 0xf97316;
+                    legColor = 0xea580c;
+                    size = { w: 0.6, h: 0.7, d: 0.85 };
+                    break;
+                case "crow":
+                    bodyColor = 0x0f172a;
+                    headColor = 0x020617;
+                    legColor = 0x1e293b;
+                    size = { w: 0.4, h: 0.4, d: 0.5 };
+                    break;
+                case "sparrow":
+                    bodyColor = 0x854d0e;
+                    headColor = 0x713f12;
+                    legColor = 0x543209;
+                    size = { w: 0.35, h: 0.35, d: 0.45 };
+                    break;
+                case "pigeon":
+                    bodyColor = 0x64748b;
+                    headColor = 0x475569;
+                    legColor = 0x334155;
+                    size = { w: 0.4, h: 0.4, d: 0.5 };
+                    break;
+            }
+
+            // Body
+            const body = new THREE.Mesh(
+                new THREE.BoxGeometry(size.w, size.h, size.d),
+                new THREE.MeshLambertMaterial({ color: bodyColor })
+            );
+            body.position.y = size.h / 2 + 0.25;
+            body.castShadow = true;
+            body.name = "Body";
+            group.add(body);
+
+            // Head
+            const headSize = Math.max(size.w * 0.8, 0.35);
+            const head = new THREE.Mesh(
+                new THREE.BoxGeometry(headSize, headSize, headSize),
+                new THREE.MeshLambertMaterial({ color: headColor })
+            );
+            head.position.set(0, size.h + headSize / 2, size.d * 0.35);
+            head.castShadow = true;
+            head.name = "Head";
+            group.add(head);
+
+            // Legs
+            const isBird = ["chicken", "duck", "goose", "crow", "sparrow", "pigeon"].includes(id);
+            const legCount = isBird ? 2 : 4;
+            const legWidth = Math.max(size.w * 0.22, 0.12);
+            const legHeight = 0.3;
+
+            for (let i = 0; i < legCount; i++) {
+                const leg = new THREE.Mesh(
+                    new THREE.BoxGeometry(legWidth, legHeight, legWidth),
+                    new THREE.MeshLambertMaterial({ color: legColor })
+                );
+                leg.name = `Leg_${i}`;
+                const dx = (i % 2 === 0) ? size.w * 0.28 : -size.w * 0.28;
+                let dz = 0;
+                if (!isBird) {
+                    dz = (i < 2) ? size.d * 0.3 : -size.d * 0.3;
+                }
+                leg.position.set(dx, legHeight / 2, dz);
+                leg.castShadow = true;
+                group.add(leg);
+            }
+
+            // Strong silhouette cues: every species gets its own blocky features.
+            const box = (w, h, d, color, x, y, z, name) => {
+                const part = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color }));
+                part.position.set(x, y, z);
+                part.name = name || "SpeciesFeature";
+                part.castShadow = true;
+                group.add(part);
+                return part;
+            };
+            const dark = 0x263238;
+            const pink = 0xf9a8d4;
+            const orange = 0xf97316;
+            const white = 0xffffff;
+            switch (id) {
+                case "sheep":
+                    box(0.22, 0.22, 0.22, dark, 0, 1.25, 0.93, "BlackNose");
+                    box(0.22, 0.34, 0.18, white, -0.38, 1.8, 0.05, "EarL");
+                    box(0.22, 0.34, 0.18, white, 0.38, 1.8, 0.05, "EarR");
+                    break;
+                case "pig":
+                    box(0.52, 0.34, 0.18, pink, 0, 0.95, 1.0, "Snout");
+                    box(0.12, 0.12, 0.08, dark, -0.12, 0.97, 1.1, "NostrilL");
+                    box(0.12, 0.12, 0.08, dark, 0.12, 0.97, 1.1, "NostrilR");
+                    box(0.18, 0.25, 0.18, pink, -0.25, 1.75, 0.4, "EarL");
+                    box(0.18, 0.25, 0.18, pink, 0.25, 1.75, 0.4, "EarR");
+                    break;
+                case "cow":
+                    box(0.62, 0.4, 0.2, 0xfca5a5, 0, 1.35, 1.15, "Muzzle");
+                    box(0.18, 0.35, 0.18, 0xf5f5f5, -0.58, 1.95, 0.05, "HornL");
+                    box(0.18, 0.35, 0.18, 0xf5f5f5, 0.58, 1.95, 0.05, "HornR");
+                    box(0.22, 0.24, 0.18, 0x111827, -0.32, 1.1, 0.05, "SpotL");
+                    box(0.22, 0.3, 0.18, 0x111827, 0.36, 0.8, -0.2, "SpotR");
+                    break;
+                case "horse":
+                    box(0.5, 0.8, 0.62, 0x78350f, 0, 1.45, 0.75, "LongMuzzle");
+                    box(0.22, 0.42, 0.18, 0x451a03, -0.3, 2.18, 0.2, "EarL");
+                    box(0.22, 0.42, 0.18, 0x451a03, 0.3, 2.18, 0.2, "EarR");
+                    box(0.25, 1.1, 0.18, 0x1c1917, 0, 1.7, -0.45, "Mane");
+                    break;
+                case "dog":
+                    box(0.48, 0.35, 0.25, 0x292524, 0, 1.0, 0.88, "Muzzle");
+                    box(0.24, 0.6, 0.18, 0x78350f, -0.4, 1.65, 0.18, "EarL");
+                    box(0.24, 0.6, 0.18, 0x78350f, 0.4, 1.65, 0.18, "EarR");
+                    box(0.18, 0.55, 0.18, 0xd97706, 0.52, 0.95, -0.65, "Tail");
+                    break;
+                case "cat":
+                    box(0.18, 0.38, 0.18, 0xd97706, -0.24, 1.55, 0.18, "PointEarL");
+                    box(0.18, 0.38, 0.18, 0xd97706, 0.24, 1.55, 0.18, "PointEarR");
+                    box(0.3, 0.18, 0.18, 0xfbbf24, 0, 0.95, 0.72, "Muzzle");
+                    box(0.16, 0.65, 0.16, 0xf59e0b, 0.45, 0.72, -0.55, "Tail");
+                    break;
+                case "chicken":
+                    box(0.18, 0.25, 0.45, orange, 0, 0.85, 0.55, "Beak");
+                    box(0.18, 0.18, 0.16, 0xdc2626, 0, 1.45, 0.05, "Comb");
+                    box(0.14, 0.34, 0.18, white, -0.28, 0.9, 0, "WingL");
+                    box(0.14, 0.34, 0.18, white, 0.28, 0.9, 0, "WingR");
+                    break;
+                case "duck":
+                    box(0.3, 0.18, 0.48, orange, 0, 1.0, 0.56, "FlatBill");
+                    box(0.14, 0.3, 0.2, 0x16a34a, -0.3, 0.82, 0, "WingL");
+                    box(0.14, 0.3, 0.2, 0x16a34a, 0.3, 0.82, 0, "WingR");
+                    break;
+                case "goose":
+                    box(0.22, 0.5, 0.22, white, 0, 1.35, 0.3, "LongNeck");
+                    box(0.32, 0.16, 0.42, orange, 0, 1.82, 0.48, "Bill");
+                    box(0.16, 0.38, 0.2, white, -0.35, 0.95, 0, "WingL");
+                    box(0.16, 0.38, 0.2, white, 0.35, 0.95, 0, "WingR");
+                    break;
+                case "crow":
+                    box(0.18, 0.16, 0.42, 0x020617, 0, 0.92, 0.45, "Beak");
+                    box(0.12, 0.4, 0.18, 0x111827, -0.28, 0.82, 0, "WingL");
+                    box(0.12, 0.4, 0.18, 0x111827, 0.28, 0.82, 0, "WingR");
+                    break;
+                case "sparrow":
+                    box(0.16, 0.16, 0.34, 0xf59e0b, 0, 0.84, 0.4, "Beak");
+                    box(0.14, 0.3, 0.16, 0x713f12, -0.25, 0.78, 0, "WingL");
+                    box(0.14, 0.3, 0.16, 0x713f12, 0.25, 0.78, 0, "WingR");
+                    break;
+                case "pigeon":
+                    box(0.16, 0.16, 0.34, 0xf5f5f5, 0, 0.9, 0.4, "Beak");
+                    box(0.14, 0.34, 0.16, 0x94a3b8, -0.25, 0.8, 0, "WingL");
+                    box(0.14, 0.34, 0.16, 0x94a3b8, 0.25, 0.8, 0, "WingR");
+                    box(0.3, 0.16, 0.16, 0x64748b, 0, 0.92, -0.28, "NeckBand");
+                    break;
+            }
+        },
+
+        // Spawn Wolf (Dark Grey long cube, red glowing eyes)
+        spawnWolf(id, x, z) {
+            const wolfGrp = new THREE.Group();
+            wolfGrp.position.set(x, 0, z);
+            wolfGrp.name = "Wolf_" + id;
+
+            // Body
+            const body = new THREE.Mesh(
+                new THREE.BoxGeometry(0.85, 0.8, 1.6),
+                new THREE.MeshLambertMaterial({ color: 0x262626 })
+            );
+            body.position.y = 0.65;
+            body.castShadow = true;
+            wolfGrp.add(body);
+
+            // Head
+            const head = new THREE.Mesh(
+                new THREE.BoxGeometry(0.75, 0.7, 0.85),
+                new THREE.MeshLambertMaterial({ color: 0x171717 })
+            );
+            head.position.set(0, 1.0, 0.7);
+            head.castShadow = true;
+            wolfGrp.add(head);
+
+            // Red Glowing Cube Eyes (Pure BoxGeometry)
+            const eyeGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+            leftEye.position.set(0.22, 1.15, 1.15);
+            const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+            rightEye.position.set(-0.22, 1.15, 1.15);
+            wolfGrp.add(leftEye, rightEye);
+
+            // Voxel wolf silhouette: pointed ears, muzzle and raised tail.
+            const wolfPart = (w, h, d, color, x, y, z, name) => {
+                const part = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color }));
+                part.position.set(x, y, z);
+                part.name = name;
+                part.castShadow = true;
+                wolfGrp.add(part);
+            };
+            wolfPart(0.22, 0.42, 0.22, 0x171717, -0.28, 1.55, 0.55, "PointEarL");
+            wolfPart(0.22, 0.42, 0.22, 0x171717, 0.28, 1.55, 0.55, "PointEarR");
+            wolfPart(0.38, 0.25, 0.34, 0x0b0b0b, 0, 0.9, 1.15, "Muzzle");
+            wolfPart(0.22, 0.7, 0.22, 0x262626, 0, 1.1, -0.95, "Tail");
+
+            // 4 Legs
+            for (let i = 0; i < 4; i++) {
+                const leg = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.2, 0.45, 0.2),
+                    new THREE.MeshLambertMaterial({ color: 0x1f1f1f })
+                );
+                const dx = (i % 2 === 0) ? 0.3 : -0.3;
+                const dz = (i < 2) ? 0.5 : -0.5;
+                leg.position.set(dx, 0.22, dz);
+                leg.castShadow = true;
+                wolfGrp.add(leg);
+            }
+
+            this.scene.add(wolfGrp);
+            this.wolfMeshes[id] = wolfGrp;
+        },
+
+        removeWolf(id) {
+            const mesh = this.wolfMeshes[id];
+            if (mesh) {
+                this.scene.remove(mesh);
+                delete this.wolfMeshes[id];
+            }
+        },
+
+        // Place Bear Trap (Dark Metallic Box with Teeth)
+        placeTrap(id, x, z) {
+            const trapGrp = new THREE.Group();
+            trapGrp.position.set(x, 0.05, z);
+            trapGrp.name = "Trap_" + id;
+
+            const base = new THREE.Mesh(
+                new THREE.BoxGeometry(1.4, 0.1, 1.4),
+                new THREE.MeshLambertMaterial({ color: 0x404040 })
+            );
+            base.receiveShadow = true;
+            trapGrp.add(base);
+
+            // Left & Right Jaw Teeth
+            const jawLeft = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 1.2), new THREE.MeshLambertMaterial({ color: 0x737373 }));
+            jawLeft.position.x = -0.55;
+            jawLeft.name = "JawLeft";
+            const jawRight = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 1.2), new THREE.MeshLambertMaterial({ color: 0x737373 }));
+            jawRight.position.x = 0.55;
+            jawRight.name = "JawRight";
+            // The trap launches a net instead of killing the wolf immediately.
+            const net = new THREE.Mesh(
+                new THREE.BoxGeometry(1.3, 0.08, 1.3),
+                new THREE.MeshBasicMaterial({ color: 0xd6d3d1, transparent: true, opacity: 0.72, wireframe: true })
+            );
+            net.position.y = 1.15;
+            net.rotation.x = 0.18;
+            net.visible = false;
+            net.name = "WolfNet";
+            trapGrp.add(jawLeft, jawRight, net);
+            trapGrp.userData.net = net;
+
+            this.scene.add(trapGrp);
+            this.trapMeshes[id] = trapGrp;
+        },
+
+        captureWolfInNet(trapId, wolfId) {
+            const mesh = this.trapMeshes[trapId];
+            const wolf = this.wolfMeshes[wolfId];
+            if (!mesh || !wolf) return;
+            const net = mesh.userData.net;
+            if (net) net.visible = true;
+            wolf.position.y = 0.65;
+            wolf.rotation.z = Math.PI / 5;
+        },
+
+        releaseWolfFromNet(trapId, wolfId) {
+            const mesh = this.trapMeshes[trapId];
+            const wolf = this.wolfMeshes[wolfId];
+            if (mesh?.userData.net) mesh.userData.net.visible = false;
+            if (wolf) {
+                wolf.position.y = 0;
+                wolf.rotation.z = 0;
+            }
+        },
+
+        removeTrap(id) {
+            const mesh = this.trapMeshes[id];
+            if (mesh) {
+                this.scene.remove(mesh);
+                delete this.trapMeshes[id];
+            }
+        },
+
+        // Update day/night lighting and celestial movement
+        updateCelestial(ratio, isDay) {
+            // Sun/Moon pivot rotates
+            const rotAngle = isDay ? (1 - ratio) * Math.PI : Math.PI + (1 - ratio) * Math.PI;
+            this.sunPivot.rotation.z = rotAngle;
+
+            if (isDay) {
+                // Day transition
+                const skyDay = new THREE.Color(0x76b852);
+                const skyDusk = new THREE.Color(0xc27a3c);
+                const currentSky = skyDusk.clone().lerp(skyDay, ratio);
+                this.scene.background = currentSky;
+                this.scene.fog.color = currentSky;
+
+                this.dirLight.color.setHex(0xfff1cf);
+                this.dirLight.intensity = 0.5 + 0.45 * ratio;
+                this.ambientLight.color.setHex(0xfff7e6);
+                this.ambientLight.intensity = 0.4 + 0.25 * ratio;
+            } else {
+                // Night transition
+                // A readable moonlit blue night: still tense, but terrain and animals remain visible.
+                const skyNight = new THREE.Color(0x4b6e9d);
+                const skyLate = new THREE.Color(0x2e456d);
+                const currentSky = skyLate.clone().lerp(skyNight, ratio);
+                this.scene.background = currentSky;
+                this.scene.fog.color = currentSky;
+
+                this.dirLight.color.setHex(0xb7dcff);
+                this.dirLight.intensity = 0.48;
+                this.ambientLight.color.setHex(0x7896c4);
+                this.ambientLight.intensity = 0.42;
+            }
+        },
+
+        onResize() {
+            const aspect = window.innerWidth / window.innerHeight;
+            const frustum = 30;
+            this.camera.left = -frustum * aspect;
+            this.camera.right = frustum * aspect;
+            this.camera.top = frustum;
+            this.camera.bottom = -frustum;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+    };
+    </script>
+
+    <script>
+    const GameEngine = {
+        tickInterval: null,
+
+        init() {
+            FarmWorld.init();
+            this.updateHUD();
+            this.startLoop();
+            this.showToast("白天已開啟：巡視農場與動物對談，注意受傷的動物！");
+        },
+
+        startLoop() {
+            this.tickInterval = setInterval(() => {
+                this.tick();
+            }, 1000);
+        },
+
+        tick() {
+            if (GameState.gameOver) return;
+
+            GameState.timer--;
+
+            if (GameState.timer <= 0) {
+                this.togglePhase();
+            }
+
+            if (GameState.phase === "Day") {
+                this.dayAI();
+            } else {
+                this.nightAI();
+            }
+
+            this.updateHUD();
+        },
+
+        togglePhase() {
+            if (GameState.phase === "Day") {
+                // Switch to Night
+                GameState.phase = "Night";
+                GameState.round++;
+                GameState.timer = GameState.nightDuration;
+                SoundAudio.playCycleShift(true);
+                this.recordStory(`第 ${GameState.round} 回合：血月升起，農場進入夜間防衛。`);
+                this.showToast(`黑夜降臨：第 ${GameState.round} 回合，野狼正自森林潛入！`);
+                this.spawnNightWolves();
+            } else {
+                // Switch to Day
+                GameState.phase = "Day";
+                GameState.timer = GameState.dayDuration;
+                SoundAudio.playCycleShift(false);
+                this.showToast("天亮了：昨晚未被消滅的野狼退回森林。快確認同伴情況！");
+
+                // A wolf still trapped at dawn is finally subdued by the net.
+                GameState.wolves.forEach(w => {
+                    if (w.captured && !w.isDead) {
+                        w.isDead = true;
+                        GameState.wolvesKilled++;
+                        this.recordStory(`第 ${GameState.round} 回合：一頭被網住的野狼未能逃回森林。`);
+                    }
+                    FarmWorld.removeWolf(w.id);
+                });
+                GameState.wolves = [];
+                GameState.traps.forEach(trap => FarmWorld.removeTrap(trap.id));
+                GameState.traps = [];
+
+                this.recordStory(`第 ${GameState.round} 回合：天亮，動物們回到白天活動。`);
+                if (GameState.round >= GameState.maxRounds && GameState.animalsDead === 0 &&
+                    !GameState.animals.some(a => a.status === "injured")) {
+                    GameState.gameOver = true;
+                    clearInterval(this.tickInterval);
+                    this.showEndModal(true, "rounds");
+                } else {
+                    // Random injury event in the morning keeps the rescue loop active.
+                    this.triggerRandomMorningInjury();
+                    this.checkVictoryOrDefeat();
+                }
+            }
+        },
+
+        dayAI() {
+            // 1. Sheep Limping & Rumor Spreading behavior
+            const sheep = GameState.getAnimal("sheep");
+            if (sheep && sheep.status !== "dead") {
+                const healthyAnimals = GameState.animals.filter(a => a.id !== "sheep" && a.status === "normal");
+                if (healthyAnimals.length > 0 && Math.random() < 0.35) {
+                    const target = healthyAnimals[Math.floor(Math.random() * healthyAnimals.length)];
+                    const dx = target.x - sheep.x;
+                    const dz = target.z - sheep.z;
+                    const dist = Math.sqrt(dx*dx + dz*dz);
+                    if (dist > 1.6) {
+                        const stepX = (dx / dist) * 0.7;
+                        const stepZ = (dz / dist) * 0.7;
+                        // Avoid walking through walls
+                        if (GameState.canMoveTo(sheep.x + stepX, sheep.z + stepZ, 0.5)) {
+                            sheep.x += stepX;
+                            sheep.z += stepZ;
+                        }
+                    } else {
+                        target.status = "panicked";
+                        GameState.sheepRumorCount++;
+                        if (GameState.sheepRumorCount >= 2 && !GameState.sheepSuspected) {
+                            GameState.sheepSuspected = true;
+                            this.showToast("大家開始懷疑黑鼻羊：泥坑、池塘與東邊柵欄的謠言互相矛盾！");
+                            this.recordStory("動物們開始懷疑黑鼻羊，發現牠把泥坑、池塘與東邊柵欄都說成野狼出沒地點。豬決定避開那些地方。 ");
+                        }
+                        GameState.pendingSheepDialogue = {
+                            speakerId: "sheep",
+                            listenerId: target.id,
+                            text: DIALOGUES_DATA.sheep.rumor_spread || "狼就要來了！你一定要相信我！"
+                        };
+                        this.showToast(`羊向${target.name}說了假戰鬥故事，${target.name}陷入恐慌！`);
+                    }
+                }
+            }
+
+            // 2. Continuous daytime wandering: each animal keeps its own roaming target.
+            const rumorAvoidZones = [
+                { name: "泥坑", x: 4, z: 13, radius: 4.2 },
+                { name: "池塘", x: 11, z: 4, radius: 6.2 },
+                { name: "東邊柵欄", x: 14, z: -4, radius: 3.5 }
+            ];
+            const isRumorAvoidZone = (x, z) => rumorAvoidZones.some(zone => Math.hypot(x - zone.x, z - zone.z) < zone.radius);
+            GameState.animals.forEach(a => {
+                if (a.status !== "dead" && a.id !== "sheep" && !a.isCarried) {
+                    const species = a.species || a.id;
+                    const strongFlyer = ["crow", "sparrow"].includes(species);
+                    const shortFlyer = ["chicken", "duck", "goose"].includes(species);
+                    const travelRange = strongFlyer ? 5.5 : (shortFlyer ? 3.2 : 4.2);
+                    let target = a.wanderTarget;
+                    if (GameState.sheepSuspected && species === "pig" && target && isRumorAvoidZone(target.x, target.z)) {
+                        a.wanderTarget = null;
+                        target = null;
+                    }
+                    const targetDistance = target ? Math.hypot(target.x - a.x, target.z - a.z) : 0;
+                    if (!target || targetDistance < 0.8 || Math.random() < 0.08) {
+                        a.wanderTarget = null;
+                        for (let attempt = 0; attempt < 10; attempt++) {
+                            const candidate = {
+                                x: Math.max(-30, Math.min(30, a.x + (Math.random() - 0.5) * travelRange)),
+                                z: Math.max(-30, Math.min(30, a.z + (Math.random() - 0.5) * travelRange))
+                            };
+                            if (!(GameState.sheepSuspected && species === "pig" && isRumorAvoidZone(candidate.x, candidate.z))) {
+                                a.wanderTarget = candidate;
+                                break;
+                            }
+                        }
+                        if (!a.wanderTarget) return;
+                    }
+                    const dx = a.wanderTarget.x - a.x;
+                    const dz = a.wanderTarget.z - a.z;
+                    const dist = Math.max(0.01, Math.hypot(dx, dz));
+                    const speed = strongFlyer ? 1.45 : (shortFlyer ? 0.95 : 0.75);
+                    const nx = a.x + (dx / dist) * Math.min(speed, dist);
+                    const nz = a.z + (dz / dist) * Math.min(speed, dist);
+                    a.isFlying = strongFlyer || (shortFlyer && dist > 1.1);
+                    const canTravel = a.isFlying
+                        ? (nx > -32 && nx < 32 && nz > -32 && nz < 32)
+                        : GameState.canMoveTo(nx, nz, 0.5);
+                    if (canTravel) {
+                        a.x = nx;
+                        a.z = nz;
+                    } else {
+                        a.wanderTarget = null;
+                    }
+                }
+
+                // Update mesh coordinates
+                const mesh = FarmWorld.animalMeshes[a.id];
+                if (mesh) {
+                    mesh.position.set(a.x, 0, a.z);
+                }
+            });
+        },
+
+        spawnNightWolves() {
+            // 4 specific vectors based on story clues:
+            // 1: North Ditch (where sheep tripped)
+            // 2: West Gate (dog/horse warning)
+            // 3: Southeast Wall (pig warning)
+            // 4: South Fruit Garden (chicken/sparrow warning)
+            const invasionPoints = [
+                { x: 0, z: -19, dir: "North" },
+                { x: -19, z: 2, dir: "West" },
+                { x: 12, z: 16, dir: "Southeast" },
+                { x: -3, z: 18, dir: "South" },
+                { x: 22, z: -18, dir: "East" }
+            ];
+
+            const wolfCount = GameState.round >= 10 ? 5 : 4;
+            invasionPoints.slice(0, wolfCount).forEach((pt, idx) => {
+                const wolfId = `wolf_${Date.now()}_${idx}`;
+                // Select alive target
+                const alive = GameState.animals.filter(a => a.status !== "dead");
+                const target = alive.length > 0 ? alive[idx % alive.length] : null;
+
+                const wolfObj = {
+                    id: wolfId,
+                    x: pt.x,
+                    z: pt.z,
+                    targetId: target ? target.id : null,
+                    isDead: false,
+                    captured: false
+                };
+                GameState.wolves.push(wolfObj);
+                FarmWorld.spawnWolf(wolfId, pt.x, pt.z);
+            });
+        },
+
+        nightAI() {
+            // At night the whole farm gathers near the red farmhouse for safety.
+            const shelterSpots = [
+                { x: -9.5, z: 1.5 }, { x: -7.8, z: 2.3 },
+                { x: -4.5, z: 2.7 }, { x: -1.2, z: 2.4 },
+                { x: 2.3, z: 1.8 }, { x: -10.8, z: 4.2 }
+            ];
+            GameState.animals.forEach((a, index) => {
+                if (a.status === "dead") return;
+                if (a.isCarried) return;
+                a.isFlying = false;
+                const shelter = shelterSpots[index % shelterSpots.length];
+                const dx = shelter.x - a.x;
+                const dz = shelter.z - a.z;
+                const dist = Math.hypot(dx, dz);
+                if (dist > 1.1) {
+                    // Night return is intentionally urgent: animals sprint back toward the farmhouse.
+                    const step = Math.min(2.15, dist);
+                    const nx = a.x + (dx / dist) * step;
+                    const nz = a.z + (dz / dist) * step;
+                    if (GameState.canMoveTo(nx, nz, 0.5)) {
+                        a.x = nx;
+                        a.z = nz;
+                    } else if (GameState.canMoveTo(nx, a.z, 0.5)) {
+                        a.x = nx;
+                    } else if (GameState.canMoveTo(a.x, nz, 0.5)) {
+                        a.z = nz;
+                    }
+                }
+                const animalMesh = FarmWorld.animalMeshes[a.id];
+                if (animalMesh) animalMesh.position.set(a.x, 0, a.z);
+            });
+
+            GameState.wolves.forEach(w => {
+                if (w.isDead || w.captured) return;
+
+                // A nearby wolf can rescue a netted packmate. The net then breaks.
+                const rescueTarget = GameState.wolves.find(other => {
+                    if (!other.captured || other.isDead) return false;
+                    return Math.hypot(other.x - w.x, other.z - w.z) < 1.8;
+                });
+                if (rescueTarget) {
+                    const rescueTrap = GameState.traps.find(t => t.capturedWolfId === rescueTarget.id);
+                    if (rescueTrap) {
+                        rescueTarget.captured = false;
+                        rescueTarget.x = w.x - 0.8;
+                        rescueTarget.z = w.z - 0.3;
+                        FarmWorld.releaseWolfFromNet(rescueTrap.id, rescueTarget.id);
+                        FarmWorld.removeTrap(rescueTrap.id);
+                        GameState.traps = GameState.traps.filter(t => t.id !== rescueTrap.id);
+                        this.recordStory(`第 ${GameState.round} 回合：另一頭野狼撕開網子，救走了被捕的同伴。`);
+                        this.showToast("野狼同伴趕來救援，網子被扯破了！");
+                    }
+                }
+
+                // Guard dogs actively chase wolves, then repel them at close range.
+                const guardDog = GameState.animals.find(a => {
+                    const species = a.species || a.id;
+                    return species === "dog" && a.status !== "dead" && a.status !== "injured" &&
+                        Math.hypot(a.x - w.x, a.z - w.z) < 14;
+                });
+                if (guardDog) {
+                    const dogDx = w.x - guardDog.x;
+                    const dogDz = w.z - guardDog.z;
+                    const dogDist = Math.max(0.01, Math.hypot(dogDx, dogDz));
+                    if (dogDist > 2.0) {
+                        const dogStep = Math.min(2.8, dogDist - 1.7);
+                        const dogX = guardDog.x + (dogDx / dogDist) * dogStep;
+                        const dogZ = guardDog.z + (dogDz / dogDist) * dogStep;
+                        if (GameState.canMoveTo(dogX, dogZ, 0.5)) {
+                            guardDog.x = dogX;
+                            guardDog.z = dogZ;
+                        } else if (GameState.canMoveTo(dogX, guardDog.z, 0.5)) {
+                            guardDog.x = dogX;
+                        } else if (GameState.canMoveTo(guardDog.x, dogZ, 0.5)) {
+                            guardDog.z = dogZ;
+                        }
+                        const dogMesh = FarmWorld.animalMeshes[guardDog.id];
+                        if (dogMesh) {
+                            dogMesh.position.set(guardDog.x, 0, guardDog.z);
+                            dogMesh.rotation.y = Math.atan2(dogDx, dogDz);
+                        }
+                    }
+
+                    if (dogDist < 7.5) {
+                        const awayDist = Math.max(0.01, Math.hypot(dogDx, dogDz));
+                        const push = 1.65;
+                        const pushedX = w.x + (dogDx / awayDist) * push;
+                        const pushedZ = w.z + (dogDz / awayDist) * push;
+                        if (GameState.canMoveTo(pushedX, pushedZ, 0.4)) {
+                            w.x = pushedX;
+                            w.z = pushedZ;
+                        } else if (GameState.canMoveTo(pushedX, w.z, 0.4)) {
+                            w.x = pushedX;
+                        } else if (GameState.canMoveTo(w.x, pushedZ, 0.4)) {
+                            w.z = pushedZ;
+                        }
+                        w.targetId = null;
+                        const wMesh = FarmWorld.wolfMeshes[w.id];
+                        if (wMesh) {
+                            wMesh.position.set(w.x, 0, w.z);
+                            wMesh.rotation.y = Math.atan2(dogDx, dogDz);
+                        }
+                        if (GameState.dogGuardNoticeRound !== GameState.round) {
+                            GameState.dogGuardNoticeRound = GameState.round;
+                            this.recordStory(`第 ${GameState.round} 回合：${guardDog.name} 主動追上野狼並把牠趕離了農場。`);
+                            this.showToast(`${guardDog.name} 發現野狼，主動追上去把牠趕走了！`);
+                        }
+                        return;
+                    }
+                }
+
+                // Move towards target animal or red farmhouse
+                let targetPos = GameState.farmhousePos;
+                const targetAnimal = GameState.getAnimal(w.targetId);
+                if (targetAnimal && targetAnimal.status !== "dead") {
+                    targetPos = { x: targetAnimal.x, z: targetAnimal.z };
+                }
+
+                const dx = targetPos.x - w.x;
+                const dz = targetPos.z - w.z;
+                const dist = Math.sqrt(dx*dx + dz*dz);
+
+                if (dist > 1.0) {
+                    // Wolves sprint at night; traps and guard dogs are the intended counters.
+                    const wolfSpeed = 2.35;
+                    const stepX = (dx / dist) * wolfSpeed;
+                    const stepZ = (dz / dist) * wolfSpeed;
+                    // Check collision with obstacles for wolves
+                    if (GameState.canMoveTo(w.x + stepX, w.z + stepZ, 0.4)) {
+                        w.x += stepX;
+                        w.z += stepZ;
+                    } else {
+                        // Slide around collision
+                        if (GameState.canMoveTo(w.x + stepX, w.z, 0.4)) w.x += stepX;
+                        else if (GameState.canMoveTo(w.x, w.z + stepZ, 0.4)) w.z += stepZ;
+                    }
+                    const wMesh = FarmWorld.wolfMeshes[w.id];
+                    if (wMesh) {
+                        wMesh.position.set(w.x, 0, w.z);
+                        wMesh.rotation.y = Math.atan2(dx, dz);
+                    }
+                } else if (targetAnimal) {
+                    // Attack animal!
+                    this.animalAttackedByWolf(targetAnimal, w);
+                }
+
+                // Net trap collision: it captures, but does not kill immediately.
+                GameState.traps.forEach(trap => {
+                    if (trap.capturedWolfId) return;
+                    const tdx = trap.x - w.x;
+                    const tdz = trap.z - w.z;
+                    const tDist = Math.sqrt(tdx*tdx + tdz*tdz);
+
+                    if (tDist < 1.1) {
+                        w.captured = true;
+                        trap.capturedWolfId = w.id;
+                        SoundAudio.playTrapSnap();
+                        FarmWorld.captureWolfInNet(trap.id, w.id);
+                        this.recordStory(`第 ${GameState.round} 回合：${w.id} 踩中獸夾，網子把牠吊起來。`);
+                        this.showToast("獸夾噴出網子，野狼在裡面滾動！快留意其他狼的救援！");
+                    }
+                });
+            });
+
+            // Filter out dead wolves
+            GameState.wolves = GameState.wolves.filter(w => !w.isDead);
+        },
+
+        animalAttackedByWolf(animal, wolf) {
+            SoundAudio.playWolfAttack();
+            if (animal.status === "injured") {
+                animal.status = "dead";
+                GameState.animalsDead++;
+                this.recordStory(`第 ${GameState.round} 回合：${animal.name} 被野狼再次咬中，倒在夜色裡。`);
+                this.showToast(`悲劇！${animal.name} 在夜間遭到野狼襲擊犧牲了……`);
+
+                const mesh = FarmWorld.animalMeshes[animal.id];
+                if (mesh) {
+                    mesh.rotation.z = Math.PI / 2;
+                    mesh.position.y = 0.1;
+                }
+            } else {
+                animal.status = "injured";
+                this.recordStory(`第 ${GameState.round} 回合：${animal.name} 被野狼抓傷，留下了需要救治的傷口。`);
+                this.showToast(`警告：${animal.name} 遭到野狼抓傷，急需救回紅農舍！`);
+            }
+
+            // Wolf disappears after biting
+            wolf.isDead = true;
+            FarmWorld.removeWolf(wolf.id);
+            this.checkVictoryOrDefeat();
+        },
+
+        triggerRandomMorningInjury() {
+            const healthy = GameState.animals.filter(a => a.status === "normal" && a.id !== "sheep");
+            if (healthy.length > 0 && Math.random() < 0.6) {
+                const victim = healthy[Math.floor(Math.random() * healthy.length)];
+                victim.status = "injured";
+                this.showToast(`${victim.name} 在晨巡時發現負傷，請盡快送回紅農舍救治！`);
+            }
+        },
+
+        checkVictoryOrDefeat() {
+            if (GameState.wolvesKilled >= GameState.wolvesNeeded) {
+                GameState.gameOver = true;
+                clearInterval(this.tickInterval);
+                this.showEndModal(true);
+            } else if (GameState.animalsDead >= GameState.maxDeadAllowed) {
+                GameState.gameOver = true;
+                clearInterval(this.tickInterval);
+                this.showEndModal(false);
+            }
+        },
+
+        recordStory(line) {
+            GameState.storyLog.push(line);
+        },
+
+        showEndModal(isWin, ending = "wolves") {
+            const modal = document.getElementById("modal-endgame");
+            const title = document.getElementById("modal-title");
+            const desc = document.getElementById("modal-desc");
+            const storybookCopy = document.getElementById("storybook-copy");
+            const generateButton = document.getElementById("btn-generate-storybook");
+            const printButton = document.getElementById("btn-print-storybook");
+            modal.classList.remove("hidden");
+
+            const story = GameState.storyLog.slice(-18).join("\n");
+            if (isWin && ending === "rounds") {
+                title.innerText = "三十回合的和平農場：全員無傷！";
+                title.className = "text-2xl font-black mb-3 text-emerald-400";
+                desc.innerText = `你讓主人與動物們平安度過三十個日夜，沒有任何動物死傷。\n\n【農場故事紀錄】\n${story}`;
+            } else if (isWin) {
+                title.innerText = "大獲全勝：四頭野狼終於被制伏！";
+                title.className = "text-2xl font-black mb-3 text-emerald-400";
+                desc.innerText = `你冷靜辨別了羊的吹牛與謊言，並用網子與守備讓四頭野狼失去戰力。\n\n【農場故事紀錄】\n${story}`;
+            } else {
+                title.innerText = "最惡結局：農場在狼群陰影下淪陷";
+                title.className = "text-2xl font-black mb-3 text-rose-500";
+                desc.innerText = `群獸因羊的面子謊言陷入大恐慌，已有 ${GameState.animalsDead} 隻動物在黑夜中犧牲。\n\n【農場故事紀錄】\n${story}`;
+            }
+            storybookCopy.innerText = `《夜巡農場：我的農場故事》\n\n${story || "今天的農場安靜又幸福，大家一起迎接了黎明。"}`;
+            generateButton.classList.remove("hidden");
+            printButton.classList.remove("hidden");
+        },
+
+        showToast(msg) {
+            const toast = document.getElementById("toast-banner");
+            toast.innerText = msg;
+            toast.classList.remove("hidden");
+            clearTimeout(this.toastTimer);
+            this.toastTimer = setTimeout(() => {
+                toast.classList.add("hidden");
+            }, 4500);
+        },
+
+        updateHUD() {
+            const titleEl = document.getElementById("hud-cycle-title");
+            const timerEl = document.getElementById("hud-timer-badge");
+            const wolfEl = document.getElementById("hud-wolf-count");
+            const deadEl = document.getElementById("hud-dead-count");
+            const injuredEl = document.getElementById("hud-injured-count");
+            const panicEl = document.getElementById("hud-panic-count");
+            const trapEl = document.getElementById("hud-trap-stock");
+            const roundEl = document.getElementById("hud-round-count");
+
+            if (GameState.phase === "Day") {
+                titleEl.innerText = "時段：白天";
+                titleEl.className = "text-base font-black tracking-wide text-amber-300";
+                timerEl.innerText = `剩餘 ${GameState.timer} 秒`;
+                timerEl.className = "px-2 py-0.5 rounded text-xs font-bold bg-amber-900 text-amber-200";
+            } else {
+                titleEl.innerText = "時段：黑夜（野狼入侵中）";
+                titleEl.className = "text-base font-black tracking-wide text-rose-400";
+                timerEl.innerText = `剩餘 ${GameState.timer} 秒`;
+                timerEl.className = "px-2 py-0.5 rounded text-xs font-bold bg-rose-950 text-rose-300";
+            }
+
+            wolfEl.innerText = `${GameState.wolvesKilled} / ${GameState.wolvesNeeded} 隻`;
+            deadEl.innerText = `${GameState.animalsDead} / ${GameState.maxDeadAllowed} 隻`;
+            
+            const injuredCount = GameState.animals.filter(a => a.status === "injured").length;
+            const panicCount = GameState.animals.filter(a => a.status === "panicked").length;
+            injuredEl.innerText = `${injuredCount} 隻`;
+            panicEl.innerText = `${panicCount} 隻`;
+
+            trapEl.innerText = `剩餘：${GameState.trapInventory} 個`;
+            if (roundEl) roundEl.innerText = `${GameState.round} / ${GameState.maxRounds}`;
+        }
+    };
+    </script>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        GameEngine.init();
+
+        const dialoguePanel = document.getElementById("dialogue-panel");
+        const dialogueName = document.getElementById("dialogue-name");
+        const dialogueTag = document.getElementById("dialogue-tag");
+        const dialogueContent = document.getElementById("dialogue-content");
+        const dialogueHint = document.getElementById("dialogue-hint");
+        const btnSoothe = document.getElementById("btn-action-soothe");
+        const btnRescue = document.getElementById("btn-action-rescue");
+        const btnDialogueOk = document.getElementById("btn-dialogue-ok");
+        const btnCloseDialogue = document.getElementById("btn-close-dialogue");
+        const dialogueNextGuide = document.getElementById("dialogue-next-guide");
+        const dialogueNextTitle = document.getElementById("dialogue-next-title");
+        const dialogueNextDetail = document.getElementById("dialogue-next-detail");
+        const btnFollowNext = document.getElementById("btn-follow-next");
+        const btnTrapMode = document.getElementById("btn-trap-mode");
+        const btnRestart = document.getElementById("btn-restart");
+        const btnGenerateStorybook = document.getElementById("btn-generate-storybook");
+        const btnPrintStorybook = document.getElementById("btn-print-storybook");
+        const storybookPreview = document.getElementById("storybook-preview");
+        const injuredCountEl = document.getElementById("hud-injured-count");
+        const injuredLabelEl = document.getElementById("hud-injured-label");
+        const injuredListPanel = document.getElementById("injured-list-panel");
+        const injuredListItems = document.getElementById("injured-list-items");
+        const clueBoard = document.getElementById("clue-board");
+        const clueSheep = document.getElementById("clue-sheep");
+        const clueElements = {
+            north: document.getElementById("clue-north"),
+            west: document.getElementById("clue-west"),
+            southeast: document.getElementById("clue-southeast"),
+            south: document.getElementById("clue-south")
+        };
+
+        function revealClue(data) {
+            if (!data) return;
+            if (data.problem) {
+                clueSheep.innerText = `黑鼻羊的壞事：${data.problem}`;
+                clueSheep.classList.add("found");
+            }
+            if (data.wolfClue && clueElements[data.wolfClue.key]) {
+                GameState.discoveredClues[data.wolfClue.key] = data.wolfClue.text;
+                clueElements[data.wolfClue.key].innerText = data.wolfClue.text;
+                clueElements[data.wolfClue.key].classList.add("found");
+            }
+            clueBoard.classList.remove("hidden");
+        }
+
+        function setPlayerDestination(destination, guidedTargetId = null, forceRepath = true) {
+            const player = GameState.player;
+            player.guidedTargetId = guidedTargetId;
+            player.destination = destination;
+            if (forceRepath || !player.path.length) {
+                player.path = GameState.findPath(player.x, player.z, destination.x, destination.z, 0.45);
+                player.pathGoal = { x: destination.x, z: destination.z };
+            }
+            player.destination = player.path.length ? player.path.shift() : destination;
+        }
+
+        function beginAutoRescue(animal) {
+            if (!animal || animal.status !== "injured") return;
+            GameState.player.autoRescueTargetId = animal.id;
+            GameState.player.autoRescuePhase = "toAnimal";
+            setPlayerDestination({ x: animal.x, z: animal.z }, animal.id);
+            injuredListPanel.classList.add("hidden");
+            GameEngine.showToast(`正在自動前往${animal.name}，抵達後會把牠抱回紅農舍。`);
+        }
+
+        function attachAnimalToPlayer(animal) {
+            const mesh = FarmWorld.animalMeshes[animal.id];
+            if (!mesh || !GameState.player.mesh) return;
+            animal.isCarried = true;
+            GameState.player.carryingAnimalId = animal.id;
+            FarmWorld.scene.remove(mesh);
+            GameState.player.mesh.add(mesh);
+            // Front-right carrying pose; compensate for the farmer's larger parent scale.
+            mesh.position.set(0.78, 1.45, 0.72);
+            mesh.rotation.set(0, Math.PI, 0);
+            mesh.scale.set(1.08, 1.08, 1.08);
+        }
+
+        function releaseAnimalFromPlayer(animal) {
+            const mesh = FarmWorld.animalMeshes[animal.id];
+            if (!mesh) return;
+            animal.isCarried = false;
+            GameState.player.carryingAnimalId = null;
+            GameState.player.mesh.remove(mesh);
+            FarmWorld.scene.add(mesh);
+            mesh.scale.set(1.55, 1.55, 1.55);
+            mesh.rotation.set(0, 0, 0);
+        }
+
+        function openInjuredList() {
+            const injured = GameState.animals.filter(a => a.status === "injured");
+            injuredListItems.innerHTML = "";
+            if (injured.length === 0) {
+                injuredListItems.innerHTML = '<div class="text-stone-300 text-base py-2">目前沒有等待救助的動物。</div>';
+            } else {
+                injured.forEach(animal => {
+                    const button = document.createElement("button");
+                    button.innerText = `${animal.name}　｜點擊自動前往並抱回農舍`;
+                    button.addEventListener("click", () => beginAutoRescue(animal));
+                    injuredListItems.appendChild(button);
+                });
+            }
+            injuredListPanel.classList.toggle("hidden");
+            SoundAudio.playPop();
+        }
+
+        injuredCountEl.addEventListener("click", openInjuredList);
+        injuredLabelEl.addEventListener("click", openInjuredList);
+
+        btnGenerateStorybook.addEventListener("click", () => {
+            storybookPreview.classList.add("visible");
+            btnGenerateStorybook.innerText = "已生成繪本頁";
+        });
+        btnPrintStorybook.addEventListener("click", () => {
+            storybookPreview.classList.add("visible");
+            window.print();
+        });
+
+        // Toggle Trap placement mode
+        btnTrapMode.addEventListener("click", () => {
+            GameState.isPlacingTrap = !GameState.isPlacingTrap;
+            if (GameState.isPlacingTrap) {
+                btnTrapMode.className = "w-full py-2 px-3 rounded bg-emerald-700 active:bg-emerald-800 border-2 border-emerald-400 text-white font-bold text-xs tracking-wider transition-all flex flex-col items-center ring-2 ring-emerald-400";
+                GameEngine.showToast("已啟動放置獸夾模式：點擊地表網格安放夾子");
+            } else {
+                btnTrapMode.className = "w-full py-2 px-3 rounded bg-amber-800 hover:bg-amber-700 active:bg-amber-900 border-2 border-amber-600 text-white font-bold text-xs tracking-wider transition-all flex flex-col items-center";
+            }
+            SoundAudio.playPop();
+        });
+
+        // Close dialogue
+        const closeDialogue = () => {
+            dialoguePanel.classList.add("hidden");
+            GameState.selectedAnimalId = null;
+            SoundAudio.playPop();
+        };
+        btnDialogueOk.addEventListener("click", closeDialogue);
+        btnCloseDialogue.addEventListener("click", closeDialogue);
+
+        // Resolve a next-character pointer from either a dialogue record or its parent JSON record.
+        function resolveNextCharacter(pointer) {
+            if (!pointer) return null;
+            if (Array.isArray(pointer)) pointer = pointer[0];
+            if (typeof pointer === "object") {
+                pointer = pointer.id || pointer.characterId || pointer.character_id || pointer.name || pointer.character;
+            }
+            if (typeof pointer !== "string") return null;
+            const key = pointer.trim();
+            return GameState.animals.find(a => a.id === key || a.name === key) || null;
+        }
+
+        function readNextPointer(record) {
+            if (!record || typeof record !== "object") return null;
+            return record.nextCharacter ?? record.next_character ?? record.nextId ?? record.next_id ?? record.followUp ?? record.follow_up ?? record.next ?? null;
+        }
+
+        function makeDialogueEntry(value) {
+            if (typeof value === "string") return { text: value };
+            if (value && typeof value === "object") {
+                return { ...value, text: value.text || value.content || value.dialogue || "……" };
+            }
+            return { text: "……" };
+        }
+
+        function directionFromPlayer(target) {
+            const dx = target.x - GameState.player.x;
+            const dz = target.z - GameState.player.z;
+            const horizontal = Math.abs(dx) < 1.5 ? "" : (dx > 0 ? "東" : "西");
+            const vertical = Math.abs(dz) < 1.5 ? "" : (dz > 0 ? "南" : "北");
+            return (vertical + horizontal) || "附近";
+        }
+
+        function showNextCharacterGuide(pointer) {
+            const target = resolveNextCharacter(pointer);
+            if (!target || target.status === "dead") {
+                dialogueNextGuide.classList.add("hidden");
+                GameState.nextGuideTargetId = null;
+                return;
+            }
+            const distance = Math.max(1, Math.round(Math.hypot(target.x - GameState.player.x, target.z - GameState.player.z)));
+            dialogueNextTitle.innerText = `下一段對談：請尋找「${target.name}」`;
+            dialogueNextDetail.innerText = `位置在你的${directionFromPlayer(target)}方，約 ${distance} 格外。牠會自己在農場中移動，抵達附近後點擊牠即可繼續故事。`;
+            dialogueNextGuide.classList.remove("hidden");
+            GameState.nextGuideTargetId = target.id;
+        }
+
+        btnFollowNext.addEventListener("click", () => {
+            const target = GameState.getAnimal(GameState.nextGuideTargetId);
+            if (!target || target.status === "dead") return;
+            setPlayerDestination({ x: target.x, z: target.z }, target.id);
+            GameEngine.showToast(`已自動引導前往${target.name}，角色會持續追蹤並避開障礙物。`);
+            closeDialogue();
+        });
+
+        // Soothe / Calm Down animal (Eliminate panic from sheep's rumor)
+        btnSoothe.addEventListener("click", () => {
+            if (!GameState.selectedAnimalId) return;
+            const animal = GameState.getAnimal(GameState.selectedAnimalId);
+            if (animal && animal.status === "panicked") {
+                animal.status = "normal";
+                SoundAudio.playHeal();
+                GameEngine.showToast(`你溫柔地摸了摸${animal.name}，牠冷靜了下來並說出了真實情報！`);
+                GameEngine.recordStory(`主人安撫了${animal.name}：牠終於不再恐慌，說出了真實情報。`);
+                openDialogueForAnimal(animal);
+                GameEngine.updateHUD();
+            }
+        });
+
+        // Rescue injured animal to Red Farmhouse
+        btnRescue.addEventListener("click", () => {
+            if (!GameState.selectedAnimalId) return;
+            const animal = GameState.getAnimal(GameState.selectedAnimalId);
+            if (animal && animal.status === "injured") {
+                // Relocate to safe farmhouse
+                animal.status = "normal";
+                animal.x = GameState.farmhousePos.x + (Math.random() - 0.5) * 2;
+                animal.z = GameState.farmhousePos.z + 2.5 + Math.random();
+
+                const mesh = FarmWorld.animalMeshes[animal.id];
+                if (mesh) {
+                    mesh.position.set(animal.x, 0, animal.z);
+                }
+
+                SoundAudio.playHeal();
+                GameEngine.showToast(`成功將${animal.name}護送回紅農舍上藥包紮！`);
+                GameEngine.recordStory(`主人把受傷的${animal.name}送回紅農舍，牠重新獲得了安全感。`);
+                openDialogueForAnimal(animal, true); // true = post_rescue dialog
+                GameEngine.updateHUD();
+            }
+        });
+
+        // Restart
+        btnRestart.addEventListener("click", () => {
+            window.location.reload();
+        });
+
+        // Display dialogue box for animal
+        function openDialogueForAnimal(animal, justRescued = false, scriptedEntry = null) {
+            const data = DIALOGUES_DATA[animal.id] || {
+                name: animal.name,
+                normal: ["……今天農場的風很舒服。"],
+                injured: "我受傷了……請把我帶回紅農舍。",
+                post_rescue: "謝謝你救了我！我會和大家一起待在農舍附近。"
+            };
+            GameState.selectedAnimalId = animal.id;
+            dialogueName.innerText = scriptedEntry && scriptedEntry.listenerName
+                ? `黑鼻羊・貝克 → ${scriptedEntry.listenerName}`
+                : data.name;
+
+            btnSoothe.classList.add("hidden");
+            btnRescue.classList.add("hidden");
+            dialogueNextGuide.classList.add("hidden");
+            GameState.nextGuideTargetId = null;
+            let selectedEntry = null;
+
+            if (scriptedEntry) {
+                dialogueTag.innerText = "造謠對談（請找出矛盾）";
+                dialogueTag.className = "text-xs px-2 py-0.5 rounded bg-orange-950 text-orange-300 border border-orange-800";
+                selectedEntry = makeDialogueEntry(scriptedEntry);
+                dialogueContent.innerText = selectedEntry.text;
+                dialogueHint.innerText = "仔細聽黑鼻羊的說法：牠可能把自己的問題包裝成英勇故事。";
+            } else if (animal.status === "dead") {
+                dialogueTag.innerText = "已犧牲";
+                dialogueTag.className = "text-xs px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800";
+                dialogueContent.innerText = "這隻動物已經在黑夜的襲擊中倒下了……";
+                dialogueHint.innerText = "務必保護其餘動物，別讓犧牲達到 3 隻！";
+            } else if (justRescued) {
+                dialogueTag.innerText = "治療康復";
+                dialogueTag.className = "text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800";
+                selectedEntry = makeDialogueEntry(data.post_rescue);
+                dialogueContent.innerText = selectedEntry.text;
+                dialogueHint.innerText = "感謝你的救助，這隻動物提供了關鍵的防禦方位！";
+            } else if (animal.status === "injured") {
+                dialogueTag.innerText = "負傷狀態";
+                dialogueTag.className = "text-xs px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800";
+                selectedEntry = makeDialogueEntry(data.injured);
+                dialogueContent.innerText = selectedEntry.text;
+                dialogueHint.innerText = "受傷動物在夜間會優先被狼獵殺，點擊「抱回紅農舍治療」！";
+                btnRescue.classList.remove("hidden");
+            } else if (animal.status === "panicked") {
+                dialogueTag.innerText = "驚恐狀態（受羊說謊誤導）";
+                dialogueTag.className = "text-xs px-2 py-0.5 rounded bg-yellow-950 text-yellow-300 border border-yellow-800";
+                const pList = data.panicked || ["哇啊！大野狼要來了！"];
+                selectedEntry = makeDialogueEntry(pList[Math.floor(Math.random() * pList.length)]);
+                dialogueContent.innerText = selectedEntry.text;
+                dialogueHint.innerText = "點擊「摸摸頭」安撫情緒，動物才會冷靜說出真話。";
+                btnSoothe.classList.remove("hidden");
+            } else {
+                if (GameState.sheepSuspected && data.suspicious) {
+                    dialogueTag.innerText = "開始懷疑黑鼻羊";
+                    dialogueTag.className = "text-xs px-2 py-0.5 rounded bg-orange-950 text-orange-300 border border-orange-800";
+                    selectedEntry = makeDialogueEntry(data.suspicious[Math.floor(Math.random() * data.suspicious.length)]);
+                    dialogueContent.innerText = selectedEntry.text;
+                    dialogueHint.innerText = "對談條件已觸發：動物們開始比對黑鼻羊與其他謠言。";
+                } else {
+                    dialogueTag.innerText = "正常狀態";
+                    dialogueTag.className = "text-xs px-2 py-0.5 rounded bg-stone-800 text-stone-300 border border-stone-600";
+                    const nList = data.normal || ["今天農場陽光真好。"];
+                    selectedEntry = makeDialogueEntry(nList[Math.floor(Math.random() * nList.length)]);
+                    dialogueContent.innerText = selectedEntry.text;
+                    dialogueHint.innerText = "仔細閱讀線索，找出四條可能被野狼突襲的通道！";
+                }
+            }
+
+            showNextCharacterGuide(readNextPointer(selectedEntry) || readNextPointer(data));
+            revealClue(data);
+            if (animal.id === "sheep" && data.problem && !scriptedEntry) {
+                dialogueHint.innerText = "黑鼻羊的話聽起來很勇敢，但請注意牠是否避開了真正受傷的原因。";
+            } else if (data.wolfClue) {
+                dialogueHint.innerText = data.wolfClue.text;
+            }
+
+            GameEngine.recordStory(`${data.name}對主人說：「${dialogueContent.innerText}」`);
+            dialoguePanel.classList.remove("hidden");
+            SoundAudio.playPop();
+        }
+
+        // Raycasting for user clicks
+        window.addEventListener("pointerdown", (event) => {
+            // Check if clicking inside UI elements
+            if (event.target.closest("#ui-layer") || event.target.closest("#modal-endgame")) return;
+
+            FarmWorld.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            FarmWorld.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            FarmWorld.raycaster.setFromCamera(FarmWorld.mouse, FarmWorld.camera);
+            const intersects = FarmWorld.raycaster.intersectObjects(FarmWorld.scene.children, true);
+
+            if (intersects.length > 0) {
+                const hit = intersects[0];
+                const hitObj = hit.object;
+
+                // Check distance to player
+                const pDist = Math.hypot(hit.point.x - GameState.player.x, hit.point.z - GameState.player.z);
+
+                // 1. Trap Placement Mode
+                if (GameState.isPlacingTrap) {
+                    if (hitObj.name === "Ground" || hitObj.parent?.name === "Ground") {
+                        if (pDist > 6.5) {
+                            GameEngine.showToast("距離太遠了！請走近該區域再放置獸夾。");
+                            return;
+                        }
+                        if (GameState.trapInventory > 0) {
+                            const trapId = "trap_" + Date.now();
+                            const px = Math.round(hit.point.x);
+                            const pz = Math.round(hit.point.z);
+
+                            // Check collision with obstacles
+                            if (!GameState.canMoveTo(px, pz, 0.3)) {
+                                GameEngine.showToast("這裡有建築或障礙物，無法放置獸夾！");
+                                return;
+                            }
+
+                            GameState.traps.push({ id: trapId, x: px, z: pz });
+                            FarmWorld.placeTrap(trapId, px, pz);
+
+                            GameState.trapInventory--;
+                            SoundAudio.playTrapSet();
+                            GameEngine.showToast(`已在位置 (${px}, ${pz}) 安置金屬獸夾！`);
+
+                            GameState.isPlacingTrap = false;
+                            btnTrapMode.className = "w-full py-2 px-3 rounded bg-amber-800 hover:bg-amber-700 active:bg-amber-900 border-2 border-amber-600 text-white font-bold text-xs tracking-wider transition-all flex flex-col items-center";
+                            GameEngine.updateHUD();
+                        } else {
+                            GameEngine.showToast("獸夾已用盡！請妥善依據線索守護通道。");
+                        }
+                    }
+                    return;
+                }
+
+                // 2. Select Animal
+                let parent = hitObj.parent;
+                let foundAnimalId = null;
+                while (parent) {
+                    if (parent.name && parent.name.startsWith("Animal_")) {
+                        foundAnimalId = parent.name.replace("Animal_", "");
+                        break;
+                    }
+                    parent = parent.parent;
+                }
+
+                if (foundAnimalId) {
+                    const animal = GameState.getAnimal(foundAnimalId);
+                    if (animal) {
+                        if (animal.isCarried) return;
+                        const distToAnimal = Math.hypot(animal.x - GameState.player.x, animal.z - GameState.player.z);
+                        if (animal.status === "injured") {
+                            beginAutoRescue(animal);
+                        } else if (distToAnimal > 2.8) {
+                            setPlayerDestination({ x: animal.x, z: animal.z }, animal.id);
+                            GameEngine.showToast(`正在自動前往${animal.name}，抵達後會自動開始對談。`);
+                        } else {
+                            openDialogueForAnimal(animal);
+                        }
+                    }
+                } else if (hitObj.name === "Ground" || hitObj.parent?.name === "Ground") {
+                    // Click-to-move: set a destination on the walkable ground.
+                    const destination = {
+                        x: Math.max(-32, Math.min(32, hit.point.x)),
+                        z: Math.max(-32, Math.min(32, hit.point.z))
+                    };
+                    if (GameState.canMoveTo(destination.x, destination.z, 0.45)) {
+                        GameState.player.guidedTargetId = null;
+                        GameState.player.autoRescueTargetId = null;
+                        GameState.player.autoRescuePhase = null;
+                        setPlayerDestination(destination, null);
+                    } else {
+                        GameEngine.showToast("這個位置有障礙物，請點擊附近的空地！");
+                    }
+                }
+            }
+        });
+
+        let lastTime = performance.now();
+        let clock = 0;
+        function renderLoop() {
+            requestAnimationFrame(renderLoop);
+            const now = performance.now();
+            const delta = Math.min((now - lastTime) / 1000, 0.1);
+            lastTime = now;
+            clock += delta * 3.5;
+
+            // Sheep initiates an on-field rumor conversation with the animal it approached.
+            if (GameState.pendingSheepDialogue && dialoguePanel.classList.contains("hidden")) {
+                const sheepConversation = GameState.pendingSheepDialogue;
+                GameState.pendingSheepDialogue = null;
+                const sheep = GameState.getAnimal(sheepConversation.speakerId);
+                if (sheep && sheep.status !== "dead") {
+                    openDialogueForAnimal(sheep, false, {
+                        listenerName: GameState.getAnimal(sheepConversation.listenerId)?.name || "同伴",
+                        text: sheepConversation.text
+                    });
+                }
+            }
+
+            // 1. Player Movement & Collision Resolution
+            let moveX = 0;
+            let moveZ = 0;
+            let destination = GameState.player.destination;
+            const autoRescueTarget = GameState.player.autoRescueTargetId
+                ? GameState.getAnimal(GameState.player.autoRescueTargetId)
+                : null;
+            if (autoRescueTarget && autoRescueTarget.status === "injured") {
+                const targetDistance = Math.hypot(autoRescueTarget.x - GameState.player.x, autoRescueTarget.z - GameState.player.z);
+                if (GameState.player.autoRescuePhase === "toAnimal" && targetDistance <= 2.8) {
+                    attachAnimalToPlayer(autoRescueTarget);
+                    GameState.player.autoRescuePhase = "toShelter";
+                    GameState.player.guidedTargetId = null;
+                    setPlayerDestination({ ...GameState.farmhousePos }, null);
+                    GameEngine.showToast(`主人抱起${autoRescueTarget.name}了，正在自動避障返回紅農舍！`);
+                    GameEngine.recordStory(`主人找到受傷的${autoRescueTarget.name}，把牠抱起來送往紅農舍。`);
+                } else if (GameState.player.autoRescuePhase === "toShelter") {
+                    const shelterDistance = Math.hypot(GameState.farmhousePos.x - GameState.player.x, GameState.farmhousePos.z - GameState.player.z);
+                    if (!GameState.player.path.length && !GameState.player.destination) {
+                        setPlayerDestination({ ...GameState.farmhousePos }, null);
+                    }
+                    if (shelterDistance <= 2.2) {
+                        autoRescueTarget.status = "normal";
+                        autoRescueTarget.x = GameState.farmhousePos.x + (Math.random() - 0.5) * 1.5;
+                        autoRescueTarget.z = GameState.farmhousePos.z + 2.2 + Math.random();
+                        const rescuedMesh = FarmWorld.animalMeshes[autoRescueTarget.id];
+                        releaseAnimalFromPlayer(autoRescueTarget);
+                        if (rescuedMesh) {
+                            rescuedMesh.position.set(autoRescueTarget.x, 0, autoRescueTarget.z);
+                            rescuedMesh.rotation.z = 0;
+                        }
+                        GameState.player.autoRescueTargetId = null;
+                        GameState.player.autoRescuePhase = null;
+                        GameState.player.destination = null;
+                        GameEngine.showToast(`${autoRescueTarget.name}已在紅農舍完成包紮！`);
+                        GameEngine.recordStory(`主人把${autoRescueTarget.name}抱回紅農舍，完成治療。`);
+                        GameEngine.updateHUD();
+                    }
+                }
+            } else if (GameState.player.autoRescueTargetId) {
+                GameState.player.autoRescueTargetId = null;
+                GameState.player.autoRescuePhase = null;
+            }
+            const guidedTarget = GameState.player.guidedTargetId ? GameState.getAnimal(GameState.player.guidedTargetId) : null;
+            if (guidedTarget && guidedTarget.status !== "dead") {
+                const targetDistance = Math.hypot(guidedTarget.x - GameState.player.x, guidedTarget.z - GameState.player.z);
+                if (targetDistance <= 2.8) {
+                    GameState.player.destination = null;
+                    GameState.player.path = [];
+                    GameState.player.pathGoal = null;
+                    GameState.player.guidedTargetId = null;
+                    if (!GameState.player.autoRescueTargetId && dialoguePanel.classList.contains("hidden")) {
+                        openDialogueForAnimal(guidedTarget);
+                    }
+                } else {
+                    // Rebuild the obstacle-safe route when the wandering animal has moved.
+                    const goalChanged = !GameState.player.pathGoal ||
+                        Math.hypot(GameState.player.pathGoal.x - guidedTarget.x, GameState.player.pathGoal.z - guidedTarget.z) > 1.5;
+                    if (goalChanged || (!GameState.player.path.length && !GameState.player.destination)) {
+                        setPlayerDestination({ x: guidedTarget.x, z: guidedTarget.z }, guidedTarget.id, true);
+                    }
+                }
+            } else if (GameState.player.guidedTargetId) {
+                GameState.player.guidedTargetId = null;
+                GameState.player.destination = null;
+            }
+            destination = GameState.player.destination;
+            if (destination) {
+                moveX = destination.x - GameState.player.x;
+                moveZ = destination.z - GameState.player.z;
+                if (Math.hypot(moveX, moveZ) < 0.35) {
+                    GameState.player.x = destination.x;
+                    GameState.player.z = destination.z;
+                    if (GameState.player.path.length) {
+                        GameState.player.destination = GameState.player.path.shift();
+                        moveX = GameState.player.destination.x - GameState.player.x;
+                        moveZ = GameState.player.destination.z - GameState.player.z;
+                    } else {
+                        GameState.player.destination = null;
+                        moveX = 0;
+                        moveZ = 0;
+                    }
+                }
+            }
+
+            const isMoving = (moveX !== 0 || moveZ !== 0);
+            GameState.player.moving = isMoving;
+
+            if (isMoving && !GameState.gameOver) {
+                // Normalize isometric movement direction
+                const len = Math.hypot(moveX, moveZ);
+                const dirX = (moveX / len);
+                const dirZ = (moveZ / len);
+                const step = Math.min(GameState.player.speed * delta, Math.hypot(moveX, moveZ));
+
+                // Attempt movement with wall collision test
+                const nextX = GameState.player.x + dirX * step;
+                const nextZ = GameState.player.z + dirZ * step;
+
+                if (GameState.canMoveTo(nextX, nextZ, 0.45)) {
+                    GameState.player.x = nextX;
+                    GameState.player.z = nextZ;
+                } else {
+                    // Slide along X or Z if one direction is clear
+                    if (GameState.canMoveTo(nextX, GameState.player.z, 0.45)) {
+                        GameState.player.x = nextX;
+                    } else if (GameState.canMoveTo(GameState.player.x, nextZ, 0.45)) {
+                        GameState.player.z = nextZ;
+                    } else {
+                        // Keep the destination and automatically choose a diagonal detour.
+                        const detours = [
+                            { x: dirX - dirZ, z: dirZ + dirX },
+                            { x: dirX + dirZ, z: dirZ - dirX },
+                            { x: -dirZ, z: dirX },
+                            { x: dirZ, z: -dirX }
+                        ];
+                        detours.sort((a, b) => {
+                            const ad = Math.hypot(destination.x - (GameState.player.x + a.x * step), destination.z - (GameState.player.z + a.z * step));
+                            const bd = Math.hypot(destination.x - (GameState.player.x + b.x * step), destination.z - (GameState.player.z + b.z * step));
+                            return ad - bd;
+                        });
+                        const detour = detours.find(option => {
+                            const len = Math.hypot(option.x, option.z) || 1;
+                            return GameState.canMoveTo(GameState.player.x + option.x / len * step, GameState.player.z + option.z / len * step, 0.45);
+                        });
+                        if (detour) {
+                            const detourLen = Math.hypot(detour.x, detour.z) || 1;
+                            GameState.player.x += detour.x / detourLen * step;
+                            GameState.player.z += detour.z / detourLen * step;
+                        }
+                    }
+                }
+
+                // Rotate player mesh towards movement direction
+                if (GameState.player.mesh) {
+                    GameState.player.mesh.position.set(GameState.player.x, 0, GameState.player.z);
+                    GameState.player.mesh.rotation.y = Math.atan2(dirX, dirZ);
+
+                    // Limb swing walking animation
+                    const leftArm = GameState.player.mesh.getObjectByName("LeftArm");
+                    const rightArm = GameState.player.mesh.getObjectByName("RightArm");
+                    const leftLeg = GameState.player.mesh.getObjectByName("LeftLeg");
+                    const rightLeg = GameState.player.mesh.getObjectByName("RightLeg");
+                    const swing = Math.sin(clock * 10) * 0.6;
+
+                    if (leftArm && rightArm && leftLeg && rightLeg) {
+                        leftArm.rotation.x = swing;
+                        rightArm.rotation.x = -swing;
+                        leftLeg.rotation.x = -swing;
+                        rightLeg.rotation.x = swing;
+                    }
+                }
+            } else if (GameState.player.mesh) {
+                // Idle limbs
+                const leftArm = GameState.player.mesh.getObjectByName("LeftArm");
+                const rightArm = GameState.player.mesh.getObjectByName("RightArm");
+                const leftLeg = GameState.player.mesh.getObjectByName("LeftLeg");
+                const rightLeg = GameState.player.mesh.getObjectByName("RightLeg");
+                if (leftArm && rightArm && leftLeg && rightLeg) {
+                    leftArm.rotation.x = 0;
+                    rightArm.rotation.x = 0;
+                    leftLeg.rotation.x = 0;
+                    rightLeg.rotation.x = 0;
+                }
+            }
+
+            // 2. Camera Smooth Tracking of Player
+            const targetCamX = GameState.player.x + 42;
+            const targetCamZ = GameState.player.z + 42;
+            FarmWorld.camera.position.x += (targetCamX - FarmWorld.camera.position.x) * 0.08;
+            FarmWorld.camera.position.z += (targetCamZ - FarmWorld.camera.position.z) * 0.08;
+            FarmWorld.controls.target.set(GameState.player.x, 0, GameState.player.z);
+            FarmWorld.controls.update();
+
+            // 3. Celestial Light Update
+            const total = GameState.phase === "Day" ? GameState.dayDuration : GameState.nightDuration;
+            const ratio = GameState.timer / total;
+            FarmWorld.updateCelestial(ratio, GameState.phase === "Day");
+
+            // 4. Animal Walking / Limping Animation & Marker floating
+            GameState.animals.forEach(a => {
+                const mesh = FarmWorld.animalMeshes[a.id];
+                if (mesh) {
+                    if (a.isCarried) {
+                        mesh.position.set(0.78, 1.45, 0.72);
+                        return;
+                    }
+                    const species = a.species || a.id;
+                    const isBird = ["chicken", "duck", "goose", "crow", "sparrow", "pigeon"].includes(species);
+                    const isHighFlyer = ["crow", "sparrow"].includes(species);
+                    // Birds visibly rise above the grass while moving through the air.
+                    if (a.isFlying && a.status !== "dead") {
+                        const flightBase = isHighFlyer ? 1.7 : 0.85;
+                        mesh.position.y = flightBase + Math.abs(Math.sin(clock * 3.2)) * 0.18;
+                        mesh.rotation.z = Math.sin(clock * 4) * (isHighFlyer ? 0.08 : 0.16);
+                    // Limping sheep specific leg tilt & bounce
+                    } else if (a.isLimping && a.status !== "dead") {
+                        const limpingWobble = Math.sin(clock * 5) * 0.12;
+                        mesh.rotation.z = limpingWobble;
+                        mesh.position.y = Math.abs(Math.sin(clock * 5)) * 0.18;
+                    } else if (a.status !== "dead") {
+                        mesh.position.y = 0;
+                        mesh.rotation.z = 0;
+                    }
+
+                    // Update Status Indicator cubes (Red Cross or Yellow Exclamation)
+                    const indicator = mesh.getObjectByName("Indicator");
+                    if (indicator) {
+                        const crossH = indicator.getObjectByName("CrossH");
+                        const crossV = indicator.getObjectByName("CrossV");
+                        const panicStick = indicator.getObjectByName("PanicStick");
+                        const panicDot = indicator.getObjectByName("PanicDot");
+                        const abilityMarker = indicator.getObjectByName("AbilityMarker");
+                        const species = a.species || a.id;
+                        if (abilityMarker) {
+                            abilityMarker.visible = a.status !== "dead" && (a.id === "sheep" || species === "dog");
+                            abilityMarker.position.y = 0.48 + Math.sin(clock * 2.5) * 0.08;
+                            abilityMarker.rotation.y = clock * 1.5;
+                        }
+
+                        if (a.status === "injured") {
+                            crossH.visible = true;
+                            crossV.visible = true;
+                            panicStick.visible = false;
+                            panicDot.visible = false;
+                            indicator.position.y = 2.2 + Math.sin(clock * 3) * 0.15;
+                            indicator.rotation.y = clock * 1.5;
+                        } else if (a.status === "panicked") {
+                            crossH.visible = false;
+                            crossV.visible = false;
+                            panicStick.visible = true;
+                            panicDot.visible = true;
+                            indicator.position.y = 2.2 + Math.sin(clock * 3) * 0.15;
+                            indicator.rotation.y = clock * 2.0;
+                        } else {
+                            crossH.visible = false;
+                            crossV.visible = false;
+                            panicStick.visible = false;
+                            panicDot.visible = false;
+                        }
+                    }
+                }
+            });
+
+            // 4. Render
+            FarmWorld.renderer.render(FarmWorld.scene, FarmWorld.camera);
+        }
+
+        renderLoop();
+    });
+    </script>
+</body>
+</html>
