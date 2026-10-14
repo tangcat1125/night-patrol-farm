@@ -1437,10 +1437,10 @@
             jawRight.name = "JawRight";
             // The trap launches a net instead of killing the wolf immediately.
             const net = new THREE.Mesh(
-                new THREE.BoxGeometry(1.3, 0.08, 1.3),
-                new THREE.MeshBasicMaterial({ color: 0xd6d3d1, transparent: true, opacity: 0.72, wireframe: true })
+                new THREE.BoxGeometry(2.35, 0.12, 2.35),
+                new THREE.MeshBasicMaterial({ color: 0x67e8f9, transparent: true, opacity: 0.96, wireframe: true })
             );
-            net.position.y = 1.15;
+            net.position.y = 1.55;
             net.rotation.x = 0.18;
             net.visible = false;
             net.name = "WolfNet";
@@ -1456,9 +1456,34 @@
             const wolf = this.wolfMeshes[wolfId];
             if (!mesh || !wolf) return;
             const net = mesh.userData.net;
-            if (net) net.visible = true;
-            wolf.position.y = 0.65;
-            wolf.rotation.z = Math.PI / 5;
+            if (!net) return;
+
+            // Make the capture readable: the net shoots up, opens, drops over the
+            // wolf, and leaves the wolf visibly tumbling inside it.
+            net.visible = true;
+            net.scale.set(0.18, 0.18, 0.18);
+            net.position.y = 0.45;
+            net.rotation.y = 0;
+            const start = performance.now();
+            const animateCapture = (now) => {
+                const progress = Math.min(1, (now - start) / 720);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                net.scale.setScalar(0.18 + eased * 0.82);
+                net.position.y = 0.45 + Math.sin(progress * Math.PI) * 1.05;
+                net.rotation.y = eased * Math.PI * 1.4;
+                wolf.position.y = 0.35 + Math.sin(progress * Math.PI * 3) * 0.28;
+                wolf.rotation.z = Math.PI / 5 + Math.sin(progress * Math.PI * 5) * 0.42;
+                if (progress < 1) {
+                    requestAnimationFrame(animateCapture);
+                } else {
+                    net.scale.setScalar(1);
+                    net.position.y = 1.15;
+                    net.rotation.y = 0;
+                    wolf.position.y = 0.65;
+                    wolf.rotation.z = Math.PI / 5;
+                }
+            };
+            requestAnimationFrame(animateCapture);
         },
 
         releaseWolfFromNet(trapId, wolfId) {
