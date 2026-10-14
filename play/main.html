@@ -1561,6 +1561,7 @@
                 GameState.traps = [];
 
                 this.recordStory(`第 ${GameState.round} 回合：天亮，動物們回到白天活動。`);
+                this.expireUntreatedInjuries();
                 if (GameState.round >= GameState.maxRounds && GameState.animalsDead === 0 &&
                     !GameState.animals.some(a => a.status === "injured")) {
                     GameState.gameOver = true;
@@ -1887,6 +1888,7 @@
                 }
             } else {
                 animal.status = "injured";
+                animal.injuredSinceRound = GameState.round;
                 this.recordStory(`第 ${GameState.round} 回合：${animal.name} 被野狼抓傷，留下了需要救治的傷口。`);
                 this.showToast(`警告：${animal.name} 遭到野狼抓傷，急需救回紅農舍！`);
             }
@@ -1902,8 +1904,30 @@
             if (healthy.length > 0 && Math.random() < 0.6) {
                 const victim = healthy[Math.floor(Math.random() * healthy.length)];
                 victim.status = "injured";
+                victim.injuredSinceRound = GameState.round;
                 this.showToast(`${victim.name} 在晨巡時發現負傷，請盡快送回紅農舍救治！`);
             }
+        },
+
+        expireUntreatedInjuries() {
+            const overdue = GameState.animals.filter(a =>
+                a.status === "injured" &&
+                Number.isFinite(a.injuredSinceRound) &&
+                GameState.round - a.injuredSinceRound >= 2
+            );
+            overdue.forEach(animal => {
+                animal.status = "dead";
+                animal.isCarried = false;
+                GameState.animalsDead++;
+                this.recordStory(`第 ${GameState.round} 回合：${animal.name} 受傷超過兩回合未治療，傷勢惡化而死亡。`);
+                this.showToast(`悲劇！${animal.name} 受傷超過兩回合未治療，已經救不回來了……`);
+                const mesh = FarmWorld.animalMeshes[animal.id];
+                if (mesh) {
+                    mesh.rotation.z = Math.PI / 2;
+                    mesh.position.y = 0.1;
+                }
+            });
+            if (overdue.length > 0) this.checkVictoryOrDefeat();
         },
 
         checkVictoryOrDefeat() {
@@ -1935,7 +1959,7 @@
             if (isWin && ending === "rounds") {
                 title.innerText = "十回合的和平農場：全員無傷！";
                 title.className = "text-2xl font-black mb-3 text-emerald-400";
-                desc.innerText = `你讓主人與動物們平安度過三十個日夜，沒有任何動物死傷。\n\n【農場故事紀錄】\n${story}`;
+                desc.innerText = `你讓主人與動物們平安度過十個日夜，沒有任何動物死傷。\n\n【農場故事紀錄】\n${story}`;
             } else if (isWin) {
                 title.innerText = "大獲全勝：四頭野狼終於被制伏！";
                 title.className = "text-2xl font-black mb-3 text-emerald-400";
@@ -2097,7 +2121,11 @@
             } else {
                 injured.forEach(animal => {
                     const button = document.createElement("button");
-                    button.innerText = `${animal.name}　｜點擊自動前往並抱回農舍`;
+                    const waitedRounds = Number.isFinite(animal.injuredSinceRound)
+                        ? Math.max(0, GameState.round - animal.injuredSinceRound)
+                        : 0;
+                    const remainingRounds = Math.max(0, 2 - waitedRounds);
+                    button.innerText = `${animal.name}　｜再 ${remainingRounds} 回合未治療將死亡`;
                     button.addEventListener("click", () => beginAutoRescue(animal));
                     injuredListItems.appendChild(button);
                 });
@@ -2215,6 +2243,7 @@
             if (animal && animal.status === "injured") {
                 // Relocate to safe farmhouse
                 animal.status = "normal";
+                animal.injuredSinceRound = null;
                 animal.x = GameState.farmhousePos.x + (Math.random() - 0.5) * 2;
                 animal.z = GameState.farmhousePos.z + 2.5 + Math.random();
 
@@ -2458,6 +2487,7 @@
                     }
                     if (shelterDistance <= 2.2) {
                         autoRescueTarget.status = "normal";
+                        autoRescueTarget.injuredSinceRound = null;
                         autoRescueTarget.x = GameState.farmhousePos.x + (Math.random() - 0.5) * 1.5;
                         autoRescueTarget.z = GameState.farmhousePos.z + 2.2 + Math.random();
                         const rescuedMesh = FarmWorld.animalMeshes[autoRescueTarget.id];
