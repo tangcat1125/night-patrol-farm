@@ -64,33 +64,65 @@
             display: none;
             position: relative;
             width: 100%;
-            aspect-ratio: 3 / 2;
-            overflow: hidden;
+            max-height: min(68vh, 720px);
+            overflow-y: auto;
             margin: 18px 0;
+            padding: 12px;
             border: 5px solid #5a3827;
             background: #ead9ae;
             box-shadow: 0 5px 0 #2b1d18;
         }
         .storybook-preview.visible { display: block; }
-        .storybook-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .storybook-pages { display: grid; gap: 18px; }
+        .storybook-page {
+            position: relative;
+            aspect-ratio: 4 / 3;
+            overflow: hidden;
+            border: 3px solid #5a3827;
+            background: #ead9ae;
+            box-shadow: 0 4px 0 rgba(43,29,24,.5);
+            isolation: isolate;
+        }
+        .storybook-page img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .storybook-copy {
             position: absolute;
-            left: 12%; right: 12%; top: 35%; bottom: 8%;
-            padding: 16px 20px;
+            left: 8%; right: 8%; bottom: 7%;
+            max-height: 66%;
             overflow: hidden;
-            background: rgba(245, 238, 216, .82);
+            padding: 18px 22px;
+            background: rgba(250, 246, 232, .93);
+            border: 2px solid rgba(67,45,31,.8);
             color: #201914;
             font-family: Georgia, "Noto Serif TC", serif;
-            font-size: clamp(11px, 1.5vw, 17px);
-            line-height: 1.55;
+            font-size: clamp(16px, 2vw, 23px);
+            line-height: 1.75;
             white-space: pre-line;
+            text-align: left;
             text-shadow: 1px 1px #fff;
+        }
+        .storybook-page-number {
+            position: absolute;
+            top: 10px; right: 14px;
+            z-index: 2;
+            padding: 4px 9px;
+            color: #fff8dc;
+            background: rgba(44,29,20,.78);
+            font-weight: 900;
+        }
+        .storybook-page-title {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 1.2em;
+            text-align: center;
+            color: #7a3e20;
         }
         @media print {
             body * { visibility: hidden !important; }
             #storybook-preview, #storybook-preview * { visibility: visible !important; }
-            #storybook-preview { display: block !important; position: fixed; inset: 0; width: 100vw; height: 100vh; margin: 0; border: 0; box-shadow: none; }
-            .storybook-copy { font-size: 20px; }
+            #storybook-preview { display: block !important; position: static; width: 100%; max-height: none; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible; background: white; }
+            .storybook-pages { display: block; }
+            .storybook-page { width: 100%; height: 92vh; margin: 0 auto 8vh; page-break-after: always; box-shadow: none; }
+            .storybook-copy { font-size: 22px; }
         }
 
         /* Student readability pass: larger HUD text and a moonlit night that keeps the farm visible. */
@@ -266,8 +298,7 @@
                 故事結尾敘述...
             </p>
             <div id="storybook-preview" class="storybook-preview">
-                <img src="../assets/storybook-background.webp" alt="動物農場繪本底圖">
-                <div id="storybook-copy" class="storybook-copy"></div>
+                <div id="storybook-pages" class="storybook-pages"></div>
             </div>
             <div class="flex flex-wrap gap-2 justify-center mb-5">
                 <button id="btn-generate-storybook" class="hidden px-4 py-2 rounded-lg font-black text-sm bg-sky-600 hover:bg-sky-500 text-white transition-all">生成繪本頁</button>
@@ -1966,11 +1997,37 @@
             GameState.storyLog.push(line);
         },
 
+        renderStorybookPages(lines) {
+            const pages = document.getElementById("storybook-pages");
+            if (!pages) return;
+            pages.innerHTML = "";
+            const safeLines = lines.length ? lines : ["今天的農場安靜又幸福，大家一起迎接了黎明。"];
+            const chunks = [];
+            for (let i = 0; i < safeLines.length; i += 5) chunks.push(safeLines.slice(i, i + 5));
+            chunks.forEach((chunk, index) => {
+                const page = document.createElement("section");
+                page.className = "storybook-page";
+                const image = document.createElement("img");
+                image.src = "../assets/storybook-background.webp";
+                image.alt = "動物農場繪本底圖";
+                const number = document.createElement("span");
+                number.className = "storybook-page-number";
+                number.innerText = `第 ${index + 1} 頁 / 共 ${chunks.length} 頁`;
+                const copy = document.createElement("div");
+                copy.className = "storybook-copy";
+                const title = document.createElement("span");
+                title.className = "storybook-page-title";
+                title.innerText = index === 0 ? "《夜巡農場：我的農場故事》" : `農場故事・第 ${index + 1} 幕`;
+                copy.append(title, document.createTextNode(chunk.join("\n")));
+                page.append(image, number, copy);
+                pages.appendChild(page);
+            });
+        },
+
         showEndModal(isWin, ending = "wolves") {
             const modal = document.getElementById("modal-endgame");
             const title = document.getElementById("modal-title");
             const desc = document.getElementById("modal-desc");
-            const storybookCopy = document.getElementById("storybook-copy");
             const generateButton = document.getElementById("btn-generate-storybook");
             const printButton = document.getElementById("btn-print-storybook");
             modal.classList.remove("hidden");
@@ -1989,7 +2046,7 @@
                 title.className = "text-2xl font-black mb-3 text-rose-500";
                 desc.innerText = `群獸因羊的面子謊言陷入大恐慌，已有 ${GameState.animalsDead} 隻動物在黑夜中犧牲。\n\n【農場故事紀錄】\n${story}`;
             }
-            storybookCopy.innerText = `《夜巡農場：我的農場故事》\n\n${story || "今天的農場安靜又幸福，大家一起迎接了黎明。"}`;
+            this.renderStorybookPages(GameState.storyLog.slice(-18));
             generateButton.classList.remove("hidden");
             printButton.classList.remove("hidden");
         },
