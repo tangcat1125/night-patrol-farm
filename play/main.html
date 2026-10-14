@@ -1671,21 +1671,41 @@
         },
 
         spawnNightWolves() {
-            // 4 specific vectors based on story clues:
-            // 1: North Ditch (where sheep tripped)
-            // 2: West Gate (dog/horse warning)
-            // 3: Southeast Wall (pig warning)
-            // 4: South Fruit Garden (chicken/sparrow warning)
-            const invasionPoints = [
-                { x: 0, z: -19, dir: "North" },
-                { x: -19, z: 2, dir: "West" },
-                { x: 12, z: 16, dir: "Southeast" },
-                { x: -3, z: 18, dir: "South" },
-                { x: 22, z: -18, dir: "East" }
-            ];
-
             const wolfCount = GameState.round >= 10 ? 5 : 4;
-            invasionPoints.slice(0, wolfCount).forEach((pt, idx) => {
+            const cluePoints = {
+                north: { x: 0, z: -19, dir: "北方臭水溝" },
+                west: { x: -19, z: 2, dir: "西方木門" },
+                southeast: { x: 12, z: 16, dir: "東南矮圍牆" },
+                south: { x: -3, z: 18, dir: "南方廢果園" }
+            };
+            const knownKeys = Object.keys(GameState.discoveredClues)
+                .filter(key => cluePoints[key]);
+            const hasClue = knownKeys.length > 0;
+            const randomEdgePoint = () => {
+                const edge = Math.floor(Math.random() * 4);
+                if (edge === 0) return { x: -24 + Math.random() * 48, z: -19, dir: "北方未知邊界" };
+                if (edge === 1) return { x: 24, z: -19 + Math.random() * 38, dir: "東方未知邊界" };
+                if (edge === 2) return { x: -24 + Math.random() * 48, z: 19, dir: "南方未知邊界" };
+                return { x: -24, z: -19 + Math.random() * 38, dir: "西方未知邊界" };
+            };
+
+            if (hasClue) {
+                this.showToast(`狼群循著已掌握的線索，從${knownKeys.map(key => cluePoints[key].dir).join("、")}出沒！`);
+                this.recordStory(`第 ${GameState.round} 回合：狼群從已掌握線索的位置出沒——${knownKeys.map(key => cluePoints[key].dir).join("、")}。`);
+            } else {
+                this.showToast("沒有可靠線索！野狼從農場外圍的未知方向隨機出沒！");
+                this.recordStory(`第 ${GameState.round} 回合：沒有掌握狼群線索，野狼從未知方向隨機出沒。`);
+            }
+
+            Array.from({ length: wolfCount }, (_, idx) => {
+                const base = hasClue
+                    ? cluePoints[knownKeys[idx % knownKeys.length]]
+                    : randomEdgePoint();
+                const pt = {
+                    x: base.x + (hasClue ? (Math.random() - 0.5) * 2.6 : 0),
+                    z: base.z + (hasClue ? (Math.random() - 0.5) * 2.6 : 0),
+                    dir: base.dir
+                };
                 const wolfId = `wolf_${Date.now()}_${idx}`;
                 // Select alive target
                 const alive = GameState.animals.filter(a => a.status !== "dead");
