@@ -228,6 +228,12 @@
 
         #mobile-data-toggle { display: none; }
         @media (max-width: 700px) { #mobile-data-toggle { display: flex; } }
+        /* Some mobile browsers report a wider CSS viewport; coarse-pointer keeps the drawer closed there too. */
+        @media (pointer: coarse) {
+            #mobile-data-toggle { display: flex; }
+            #ui-layer:not(.mobile-data-open) #clue-board { display: none !important; }
+            #ui-layer.mobile-data-open #clue-board { display: block !important; }
+        }
     </style>
 </head>
 <body class="relative">
@@ -291,7 +297,7 @@
             <span class="compass-note">地圖方向：上方為北，右方為東</span>
         </div>
 
-        <button id="mobile-data-toggle" type="button" aria-expanded="false" aria-controls="clue-board">▣ 資料</button>
+        <button id="mobile-data-toggle" type="button" aria-expanded="false" aria-controls="clue-board">▣ 資料夾</button>
 
         <div id="injured-list-panel" class="hidden pointer-events-auto pixel-box rounded-xl p-3 text-white">
             <div class="text-amber-300 font-black text-lg border-b border-stone-700 pb-2">受傷動物名單</div>
@@ -2405,7 +2411,7 @@
         mobileDataToggle.addEventListener("click", () => {
             const isOpen = document.getElementById("ui-layer").classList.toggle("mobile-data-open");
             mobileDataToggle.setAttribute("aria-expanded", String(isOpen));
-            mobileDataToggle.innerText = isOpen ? "▣ 收起資料" : "▣ 資料";
+            mobileDataToggle.innerText = isOpen ? "▣ 收起資料夾" : "▣ 資料夾";
             SoundAudio.playPop();
         });
 
