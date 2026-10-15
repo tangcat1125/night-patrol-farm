@@ -76,30 +76,41 @@
         .storybook-pages { display: grid; gap: 18px; }
         .storybook-page {
             position: relative;
-            aspect-ratio: 4 / 3;
+            display: grid;
+            grid-template-columns: minmax(0, 58%) minmax(280px, 42%);
+            aspect-ratio: 16 / 9;
             overflow: hidden;
             border: 3px solid #5a3827;
             background: #ead9ae;
             box-shadow: 0 4px 0 rgba(43,29,24,.5);
             isolation: isolate;
         }
-        .storybook-page img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .storybook-art { position: relative; min-width: 0; overflow: hidden; background: #8a6845; }
+        .storybook-art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 64%, rgba(28,20,16,.18)); pointer-events: none; }
+        .storybook-art img { width: 100%; height: 100%; object-fit: cover; display: block; transform: scale(1.02); }
+        .storybook-page.scene-night .storybook-art img { filter: brightness(.68) saturate(1.25) hue-rotate(188deg); }
+        .storybook-page.scene-truth .storybook-art img { filter: saturate(.9) sepia(.12); }
+        .storybook-page.scene-defense .storybook-art img { filter: saturate(1.12) brightness(1.04); }
+        .storybook-page.scene-trap .storybook-art img { filter: contrast(1.08) saturate(1.18) hue-rotate(145deg); }
+        .storybook-page.scene-rescue .storybook-art img { filter: saturate(1.08) sepia(.14) brightness(1.06); }
+        .storybook-page.scene-ending .storybook-art img { filter: saturate(1.18) sepia(.2) brightness(1.08); }
         .storybook-copy {
-            position: absolute;
-            left: 8%; right: 8%; bottom: 7%;
-            max-height: 66%;
-            overflow: hidden;
-            padding: 18px 22px;
-            background: rgba(250, 246, 232, .93);
-            border: 2px solid rgba(67,45,31,.8);
+            position: relative;
+            z-index: 1;
+            overflow-y: auto;
+            padding: clamp(18px, 3vw, 34px);
+            background: rgba(250, 246, 232, .96);
+            border-left: 4px solid rgba(67,45,31,.8);
             color: #201914;
             font-family: Georgia, "Noto Serif TC", serif;
-            font-size: clamp(16px, 2vw, 23px);
-            line-height: 1.75;
-            white-space: pre-line;
+            font-size: clamp(17px, 1.55vw, 24px);
+            line-height: 1.8;
             text-align: left;
             text-shadow: 1px 1px #fff;
         }
+        .storybook-event { display: block; padding: 8px 0 12px; border-bottom: 1px dashed rgba(122,62,32,.4); }
+        .storybook-event:last-child { border-bottom: 0; }
+        .storybook-event-meta { display: block; margin-bottom: 3px; color: #8b552d; font-size: .72em; font-weight: 900; letter-spacing: .08em; }
         .storybook-page-number {
             position: absolute;
             top: 10px; right: 14px;
@@ -122,7 +133,8 @@
             #storybook-preview { display: block !important; position: static; width: 100%; max-height: none; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible; background: white; }
             .storybook-pages { display: block; }
             .storybook-page { width: 100%; height: 92vh; margin: 0 auto 8vh; page-break-after: always; box-shadow: none; }
-            .storybook-copy { font-size: 22px; }
+            .storybook-copy { font-size: 22px; overflow: hidden; }
+            .storybook-art img { filter: none !important; }
         }
 
         /* Student readability pass: larger HUD text and a moonlit night that keeps the farm visible. */
@@ -296,7 +308,7 @@
     </div>
 
     <div id="modal-endgame" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
-        <div class="pixel-box max-w-lg w-full rounded-2xl p-6 text-center text-white border-4 border-amber-600">
+        <div class="pixel-box max-w-6xl max-h-[94vh] overflow-y-auto w-full rounded-2xl p-6 text-center text-white border-4 border-amber-600">
             <h2 id="modal-title" class="text-2xl font-black mb-3 text-amber-400">通關結果</h2>
             <p id="modal-desc" class="text-stone-300 text-sm leading-relaxed mb-6">
                 故事結尾敘述...
@@ -305,7 +317,6 @@
                 <div id="storybook-pages" class="storybook-pages"></div>
             </div>
             <div class="flex flex-wrap gap-2 justify-center mb-5">
-                <button id="btn-generate-storybook" class="hidden px-4 py-2 rounded-lg font-black text-sm bg-sky-600 hover:bg-sky-500 text-white transition-all">生成繪本頁</button>
                 <button id="btn-print-storybook" class="hidden px-4 py-2 rounded-lg font-black text-sm bg-emerald-600 hover:bg-emerald-500 text-white transition-all">列印繪本</button>
             </div>
             <button id="btn-restart" class="px-6 py-3 rounded-lg font-black text-sm bg-amber-600 hover:bg-amber-500 text-stone-950 transition-all shadow-lg">
@@ -518,6 +529,7 @@
         traps: [], // { id, x, z, mesh }
         wolves: [], // { id, x, z, mesh, targetId, isDead }
         storyLog: [],
+        storyTimeline: [],
         selectedAnimalId: null,
         nextGuideTargetId: null,
         discoveredClues: {},
@@ -1300,17 +1312,16 @@
         animateWolfPounce(wolf, target, onHit) {
             const mesh = this.wolfMeshes[wolf.id];
             if (!mesh) { onHit(); return; }
-            const startX = wolf.x, startZ = wolf.z;
+            const startX = mesh.position.x, startZ = mesh.position.z;
             const start = performance.now();
             SoundAudio.playWolfAttack();
             const frame = (now) => {
                 if (!this.wolfMeshes[wolf.id]) return;
                 const t = Math.min(1, (now - start) / 420);
-                const lunge = Math.sin(t * Math.PI) * 1.2;
-                const length = Math.max(0.01, Math.hypot(target.x - startX, target.z - startZ));
-                mesh.position.set(startX + (target.x - startX) / length * lunge,
+                const forward = 1 - Math.pow(1 - t, 2);
+                mesh.position.set(startX + (target.x - startX) * forward,
                     Math.sin(t * Math.PI) * 1.05,
-                    startZ + (target.z - startZ) / length * lunge);
+                    startZ + (target.z - startZ) * forward);
                 mesh.rotation.y = Math.atan2(target.x - startX, target.z - startZ);
                 mesh.rotation.x = -Math.sin(t * Math.PI) * 0.3;
                 if (t < 1) requestAnimationFrame(frame);
@@ -1794,9 +1805,8 @@
                         Math.hypot(a.x - w.x, a.z - w.z) < 15);
                     if (crow) {
                         GameState.crowGuardUsedRound = GameState.round;
+                        crow.swoop = { fromX: crow.x, fromZ: crow.z, toX: w.x - 1.5, toZ: w.z - 1.5, startedAt: performance.now() };
                         crow.x = w.x - 1.5; crow.z = w.z - 1.5; crow.isFlying = true;
-                        const crowMesh = FarmWorld.animalMeshes[crow.id];
-                        if (crowMesh) crowMesh.position.set(crow.x, 2.4, crow.z);
                         w.retreating = true;
                         w.retreatTarget = { x: w.x < 0 ? -39 : 39, z: w.z < 0 ? -35 : 35 };
                         SoundAudio.playWolfRetreat();
@@ -1870,7 +1880,9 @@
                         w.targetId = null;
                         const wMesh = FarmWorld.wolfMeshes[w.id];
                         if (wMesh) {
-                            wMesh.position.set(w.x, 0, w.z);
+                            w.moveFrom = { x: wMesh.position.x, z: wMesh.position.z };
+                            w.moveTo = { x: w.x, z: w.z };
+                            w.moveStartedAt = performance.now();
                             wMesh.rotation.y = Math.atan2(dogDx, dogDz);
                         }
                         if (GameState.dogGuardNoticeRound !== GameState.round) {
@@ -1910,7 +1922,9 @@
                     }
                     const wMesh = FarmWorld.wolfMeshes[w.id];
                     if (wMesh) {
-                        wMesh.position.set(w.x, 0, w.z);
+                        w.moveFrom = { x: wMesh.position.x, z: wMesh.position.z };
+                        w.moveTo = { x: w.x, z: w.z };
+                        w.moveStartedAt = performance.now();
                         wMesh.rotation.y = Math.atan2(dx, dz);
                     }
                 }
@@ -1931,6 +1945,7 @@
                     if (tDist < 1.35) {
                         w.captured = true;
                         w.capturedAt = performance.now();
+                        w.moveTo = null;
                         trap.capturedWolfId = w.id;
                         w.x = trap.x; w.z = trap.z;
                         const trappedMesh = FarmWorld.wolfMeshes[w.id];
@@ -1943,6 +1958,7 @@
                 });
                 if (!w.captured && targetAnimal && Math.hypot(targetAnimal.x - w.x, targetAnimal.z - w.z) <= 1.7) {
                     w.attacking = true;
+                    w.moveTo = null;
                     FarmWorld.animateWolfPounce(w, targetAnimal, () => this.animalAttackedByWolf(targetAnimal, w));
                 }
             });
@@ -2036,33 +2052,86 @@
             }
         },
 
-        recordStory(line) {
+        recordStory(line, meta = {}) {
             GameState.storyLog.push(line);
+            const text = String(line || "");
+            let type = meta.type || "day";
+            let scene = meta.scene || "day";
+            if (!meta.type) {
+                if (/對主人說|對談|安撫|謊言|昨晚|足跡|怪物/.test(text)) type = "dialogue";
+                else if (/捕捉|網子|網住|獸夾/.test(text)) { type = "capture"; scene = "trap"; }
+                else if (/被野狼|狼群|狼嚎|咬中|抓傷|夜間防衛|黑夜/.test(text)) { type = "attack"; scene = "night"; }
+                else if (/抱起|抱回|送回|治療|包紮/.test(text)) { type = "rescue"; scene = "rescue"; }
+                else if (/驅離|追上野狼|俯衝/.test(text)) { type = "defense"; scene = "defense"; }
+            }
+            GameState.storyTimeline.push({
+                line: text,
+                type,
+                scene,
+                round: meta.round ?? GameState.round,
+                phase: meta.phase ?? GameState.phase,
+                title: meta.title || ""
+            });
         },
 
-        renderStorybookPages(lines) {
+        buildStorybookFrames() {
+            const events = GameState.storyTimeline.length
+                ? GameState.storyTimeline
+                : GameState.storyLog.map(line => ({ line, type: "day", scene: "day", round: GameState.round, phase: GameState.phase }));
+            const frames = [];
+            for (let i = 0; i < events.length; i += 4) {
+                const chunk = events.slice(i, i + 4);
+                const lead = chunk.find(event => event.type === "ending") || chunk.find(event => event.type === "attack" || event.type === "capture" || event.type === "rescue" || event.type === "dialogue") || chunk[0];
+                const scene = lead.scene || "day";
+                const titles = {
+                    day: "白天巡查",
+                    dialogue: "農場裡的線索",
+                    truth: "查出黑鼻羊的謊言",
+                    defense: "農場防線",
+                    night: "狼群入夜",
+                    trap: "網夾出動",
+                    rescue: "把夥伴抱回農舍",
+                    ending: "故事的結尾"
+                };
+                frames.push({ scene, title: lead.title || titles[scene] || "農場故事", events: chunk });
+            }
+            if (!frames.length) frames.push({ scene: "day", title: "《夜巡農場：我的農場故事》", events: [{ line: "今天的農場安靜又幸福，大家一起迎接了黎明。", round: 0, phase: "Day" }] });
+            return frames;
+        },
+
+        renderStorybookPages() {
             const pages = document.getElementById("storybook-pages");
             if (!pages) return;
             pages.innerHTML = "";
-            const safeLines = lines.length ? lines : ["今天的農場安靜又幸福，大家一起迎接了黎明。"];
-            const chunks = [];
-            for (let i = 0; i < safeLines.length; i += 5) chunks.push(safeLines.slice(i, i + 5));
-            chunks.forEach((chunk, index) => {
+            const frames = this.buildStorybookFrames();
+            frames.forEach((frame, index) => {
                 const page = document.createElement("section");
-                page.className = "storybook-page";
+                page.className = `storybook-page scene-${frame.scene}`;
+                const art = document.createElement("div");
+                art.className = "storybook-art";
                 const image = document.createElement("img");
                 image.src = "../assets/storybook-background.webp";
-                image.alt = "動物農場繪本底圖";
+                image.alt = `動物農場繪本底圖：${frame.title}`;
+                art.appendChild(image);
                 const number = document.createElement("span");
                 number.className = "storybook-page-number";
-                number.innerText = `第 ${index + 1} 頁 / 共 ${chunks.length} 頁`;
+                number.innerText = `第 ${index + 1} 頁 / 共 ${frames.length} 頁`;
                 const copy = document.createElement("div");
                 copy.className = "storybook-copy";
                 const title = document.createElement("span");
                 title.className = "storybook-page-title";
-                title.innerText = index === 0 ? "《夜巡農場：我的農場故事》" : `農場故事・第 ${index + 1} 幕`;
-                copy.append(title, document.createTextNode(chunk.join("\n")));
-                page.append(image, number, copy);
+                title.innerText = index === 0 ? "《夜巡農場：我的農場故事》" : frame.title;
+                copy.appendChild(title);
+                frame.events.forEach(event => {
+                    const item = document.createElement("span");
+                    item.className = "storybook-event";
+                    const meta = document.createElement("small");
+                    meta.className = "storybook-event-meta";
+                    meta.innerText = `第 ${event.round || 1} 回合・${event.phase === "Night" ? "夜晚" : "白天"}`;
+                    item.append(meta, document.createTextNode(event.line));
+                    copy.appendChild(item);
+                });
+                page.append(art, number, copy);
                 pages.appendChild(page);
             });
         },
@@ -2071,10 +2140,10 @@
             const modal = document.getElementById("modal-endgame");
             const title = document.getElementById("modal-title");
             const desc = document.getElementById("modal-desc");
-            const generateButton = document.getElementById("btn-generate-storybook");
             const printButton = document.getElementById("btn-print-storybook");
             modal.classList.remove("hidden");
 
+            this.recordStory(isWin ? "農場迎來新的早晨，大家把這段巡守記成了一本繪本。" : "迷霧籠罩農場，這段失守的夜晚也被記進了繪本。", { type: "ending", scene: "ending", title: isWin ? "平安迎來黎明" : "迷霧中的結局" });
             const story = GameState.storyLog.slice(-18).join("\n");
             if (isWin && ending === "rounds") {
                 title.innerText = "十回合的和平農場：全員無傷！";
@@ -2089,8 +2158,7 @@
                 title.className = "text-2xl font-black mb-3 text-rose-500";
                 desc.innerText = `群獸因羊的面子謊言陷入大恐慌，已有 ${GameState.animalsDead} 隻動物在黑夜中犧牲。\n\n【農場故事紀錄】\n${story}`;
             }
-            this.renderStorybookPages(GameState.storyLog);
-            generateButton.classList.remove("hidden");
+            this.renderStorybookPages();
             printButton.classList.remove("hidden");
         },
 
@@ -2160,7 +2228,6 @@
         const btnFollowNext = document.getElementById("btn-follow-next");
         const btnTrapMode = document.getElementById("btn-trap-mode");
         const btnRestart = document.getElementById("btn-restart");
-        const btnGenerateStorybook = document.getElementById("btn-generate-storybook");
         const btnPrintStorybook = document.getElementById("btn-print-storybook");
         const storybookPreview = document.getElementById("storybook-preview");
         const injuredCountEl = document.getElementById("hud-injured-count");
@@ -2279,13 +2346,14 @@
         injuredCountEl.addEventListener("click", openInjuredList);
         injuredLabelEl.addEventListener("click", openInjuredList);
 
-        btnGenerateStorybook.addEventListener("click", () => {
-            storybookPreview.classList.add("visible");
-            btnGenerateStorybook.innerText = "已生成繪本頁";
-        });
         btnPrintStorybook.addEventListener("click", () => {
+            GameEngine.renderStorybookPages();
             storybookPreview.classList.add("visible");
-            window.print();
+            btnPrintStorybook.innerText = "正在準備列印…";
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                window.print();
+                btnPrintStorybook.innerText = "再次列印繪本";
+            }));
         });
 
         // Toggle Trap placement mode
@@ -2484,7 +2552,11 @@
             showNextCharacterGuide(readNextPointer(selectedEntry) || readNextPointer(data));
             if (selectedEntry && !scriptedEntry) applyDialogueGrants(selectedEntry);
 
-            GameEngine.recordStory(`${data.name || animal.name}對主人說：「${dialogueContent.innerText}」`);
+            GameEngine.recordStory(`${data.name || animal.name}對主人說：「${dialogueContent.innerText}」`, {
+                type: "dialogue",
+                scene: selectedEntry?.route === "truth" ? "truth" : (selectedEntry?.route === "defense" ? "defense" : "dialogue"),
+                title: selectedEntry?.route === "truth" ? "查出黑鼻羊的謊言" : (selectedEntry?.route === "defense" ? "農場防線" : "農場裡的線索")
+            });
             dialoguePanel.classList.remove("hidden");
             SoundAudio.playPop();
         }
@@ -2615,6 +2687,12 @@
                         mesh.rotation.z = Math.PI / 5 + Math.sin(now * 0.014) * 0.25;
                     }
                 } else {
+                    if (w.moveTo && !w.retreating) {
+                        const progress = Math.min(1, (now - w.moveStartedAt) / 850);
+                        mesh.position.x = w.moveFrom.x + (w.moveTo.x - w.moveFrom.x) * progress;
+                        mesh.position.z = w.moveFrom.z + (w.moveTo.z - w.moveFrom.z) * progress;
+                        if (progress >= 1) w.moveTo = null;
+                    }
                     mesh.position.y = Math.abs(Math.sin(now * 0.02 + w.x)) * 0.22;
                     for (let i = 0; i < 4; i++) {
                         const leg = mesh.getObjectByName(`WolfLeg${i}`);
@@ -2823,6 +2901,17 @@
             GameState.animals.forEach(a => {
                 const mesh = FarmWorld.animalMeshes[a.id];
                 if (mesh) {
+                    if (a.swoop) {
+                        const progress = Math.min(1, (now - a.swoop.startedAt) / 650);
+                        mesh.position.set(
+                            a.swoop.fromX + (a.swoop.toX - a.swoop.fromX) * progress,
+                            2.2 + Math.sin(progress * Math.PI) * 1.8,
+                            a.swoop.fromZ + (a.swoop.toZ - a.swoop.fromZ) * progress
+                        );
+                        mesh.rotation.z = Math.sin(progress * Math.PI) * 0.28;
+                        if (progress >= 1) a.swoop = null;
+                        return;
+                    }
                     if (a.isCarried) {
                         mesh.position.set(0.78, 1.45, 0.72);
                         return;
