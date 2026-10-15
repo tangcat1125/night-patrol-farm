@@ -1419,8 +1419,8 @@
             jawRight.name = "JawRight";
             // The trap launches a net instead of killing the wolf immediately.
             const net = new THREE.Mesh(
-                new THREE.BoxGeometry(2.35, 0.12, 2.35),
-                new THREE.MeshBasicMaterial({ color: 0x67e8f9, transparent: true, opacity: 0.96, wireframe: true })
+                new THREE.BoxGeometry(3.2, 0.18, 3.2),
+                new THREE.MeshBasicMaterial({ color: 0xfde047, transparent: true, opacity: 0.98, wireframe: true })
             );
             net.position.y = 1.55;
             net.rotation.x = 0.18;
@@ -1442,6 +1442,7 @@
 
             // Make the capture readable: the net shoots up, opens, drops over the
             // wolf, and leaves the wolf visibly tumbling inside it.
+            wolf.visible = true;
             net.visible = true;
             net.scale.set(0.18, 0.18, 0.18);
             net.position.y = 0.45;
@@ -1450,7 +1451,7 @@
             const animateCapture = (now) => {
                 const progress = Math.min(1, (now - start) / 720);
                 const eased = 1 - Math.pow(1 - progress, 3);
-                net.scale.setScalar(0.18 + eased * 0.82);
+                net.scale.setScalar(0.18 + eased * 1.05);
                 net.position.y = 0.45 + Math.sin(progress * Math.PI) * 1.05;
                 net.rotation.y = eased * Math.PI * 1.4;
                 wolf.position.y = 0.35 + Math.sin(progress * Math.PI * 3) * 0.28;
@@ -1458,7 +1459,7 @@
                 if (progress < 1) {
                     requestAnimationFrame(animateCapture);
                 } else {
-                    net.scale.setScalar(1);
+                    net.scale.setScalar(1.15);
                     net.position.y = 1.15;
                     net.rotation.y = 0;
                     wolf.position.y = 0.65;
@@ -1993,7 +1994,7 @@
                 // Test the whole running segment: a fast wolf can leap over a trap
                 // between the one-second AI updates.
                 GameState.traps.forEach(trap => {
-                    if (trap.capturedWolfId || w.captured) return;
+                    if (trap.capturedWolfId || w.captured || w.capturing) return;
                     const segmentX = w.x - previousX, segmentZ = w.z - previousZ;
                     const lengthSquared = segmentX * segmentX + segmentZ * segmentZ;
                     const fraction = lengthSquared > 0
@@ -2003,7 +2004,10 @@
                     const nearZ = previousZ + segmentZ * fraction;
                     const tDist = Math.hypot(trap.x - nearX, trap.z - nearZ);
 
-                    if (tDist < 1.35) {
+                    // Wolves sprint quickly and can pass between AI ticks. A generous
+                    // radius plus segment test makes the net feel reliable on mobile.
+                    if (tDist < 2.2) {
+                        w.capturing = true;
                         w.captured = true;
                         w.capturedAt = performance.now();
                         w.moveTo = null;
