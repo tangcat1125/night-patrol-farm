@@ -9,4 +9,10 @@
 
 每段 `conversations` 可設定 `requires`（先決證據）、`grants`（新線索或守備能力）和 `nextCharacter`（導引下一位角色）。遊戲會優先顯示尚未聽過、且條件已滿足的對談。沒有線索時，野狼從農場外圍隨機出現；取得入口線索後，夜間會從已查明的入口出現。
 
+對談使用 `pages: ["第一頁", "第二頁"]`，每頁是一小段場景、動作或問答。舊的字串與 `text` 格式仍可讀取。按「翻下一頁」閱讀，最後按「讀完這一段」或前往下一角色，才會取得證據、記為已讀；中途關閉可從頭重讀。閱讀時暫停計時及角色移動。
+
+完整讀完 `sheep-claim` 後，黑鼻羊才會沿路尋找尚未聽過故事的同伴，以固定目標及尋路繞過障礙。每個實體各記一次 `rumorHeard`，同伴依各自 JSON 的 `rumorResponse.pages` 回應，`{name}` 會代入該同伴名字。烏鴉角色不受謠言驚嚇；主要烏鴉親眼見過貝克在北邊泥坑跌倒。取得三份證詞並讀完坦白後，停止謠言，解除因謠言造成的恐慌，但不會治好受傷或復活動物。
+
+執行 `node tools/story-flow-test.cjs` 可在安裝 Playwright 的環境，以 Chromium 驗證實際對話 DOM、23 位同伴的傳播、烏鴉免疫及坦白流程（繪圖與音效使用替身）；`tools/browser-smoke.cjs` 則供完整 WebGL 遊戲另行驗證。
+
 GitHub Pages 會直接讀這些 JSON。直接以 `index.html` 離線開啟時，瀏覽器禁止讀取本機 JSON，因此遊戲使用同資料的 `bundle.js`。編輯 JSON 後，在專案根目錄執行 `node dialogues/build-bundle.cjs` 更新離線副本，再發布。
