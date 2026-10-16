@@ -236,6 +236,53 @@
             #ui-layer:not(.mobile-data-open) #clue-board { display: none !important; }
             #ui-layer.mobile-data-open #clue-board { display: block !important; }
         }
+
+        /* One bottom drawer for clues; the reading surface lives above every HUD. */
+        #mobile-data-toggle { display:flex !important; position:fixed; left:50%; right:auto; bottom:12px; transform:translateX(-50%); z-index:80; min-height:44px; padding:10px 22px; border:2px solid #f59e0b; border-radius:12px; background:#291b13; color:#fff0c2; font-weight:900; pointer-events:auto; }
+        #clue-board { display:none !important; position:fixed; left:50%; right:auto; top:auto; bottom:70px; transform:translateX(-50%); width:min(760px,calc(100vw - 24px)); max-height:55dvh; overflow:auto; z-index:79; pointer-events:auto; }
+        #ui-layer.mobile-data-open #clue-board { display:block !important; }
+        #visit-status { position:fixed; left:16px; bottom:16px; z-index:70; max-width:calc(50vw - 110px); padding:10px 14px; border:1px solid #ad8456; border-radius:10px; color:#ffedc5; background:rgba(33,23,16,.94); font-size:16px; font-weight:700; pointer-events:none; }
+        #visit-status:empty { display:none; }
+        body.dialogue-open #toast-banner, body.dialogue-open #clue-board, body.dialogue-open #mobile-data-toggle, body.dialogue-open #visit-status, body.dialogue-open #injured-list-panel { display:none !important; }
+        #dialogue-panel { position:fixed !important; left:50% !important; right:auto !important; top:auto !important; bottom:16px !important; transform:translateX(-50%); width:min(960px,calc(100vw - 24px)) !important; max-width:none !important; max-height:76dvh !important; margin:0 !important; z-index:1000 !important; padding:20px !important; overflow:hidden !important; background:#20170f; box-shadow:0 0 0 100vmax rgba(0,0,0,.23),0 12px 40px #000; isolation:isolate; }
+        #dialogue-panel:not(.hidden) { display:flex; flex-direction:column; gap:10px; }
+        #dialogue-panel { color:#fff2d8; }
+        #dialogue-content { color:#f5eadb; }
+        #dialogue-hint { color:#d5c6b6; }
+        #dialogue-name { color:#fcd36b; }
+        #btn-dialogue-ok { color:#24170c; background:#f5be59; border:2px solid #ffd888; border-radius:8px; padding:10px 18px; font-weight:900; }
+        #btn-close-dialogue { color:#f5eadb; background:#493429; border-radius:6px; }
+        #ui-layer { color:#f5eadb; }
+        #dialogue-panel > div { flex-shrink:0; }
+        #dialogue-panel > div:first-child { display:flex; align-items:center; justify-content:space-between; margin:0; }
+        #dialogue-panel > div:first-child > div { display:flex; align-items:center; gap:8px; }
+        #dialogue-name { margin:0; }
+        #dialogue-panel > div:last-child { display:flex; justify-content:space-between; align-items:center; }
+        #dialogue-panel > div:last-child > div { display:flex; gap:8px; }
+        #dialogue-content { flex:1 1 auto; min-height:0 !important; overflow-y:auto; margin:0 !important; font-size:clamp(19px,1.7vw,24px) !important; line-height:1.85 !important; }
+        #dialogue-next-guide { margin:0 !important; padding:10px 14px !important; }
+        #dialogue-next-detail { display:none !important; }
+        #dialogue-panel button { min-height:44px; touch-action:manipulation; }
+        #dialogue-panel > div:last-child { flex-wrap:wrap; gap:10px; }
+        #dialogue-panel > div:last-child > div { flex-wrap:wrap; }
+        #modal-endgame { z-index:2000; }
+        @media(max-height:500px) {
+            #dialogue-panel { max-height:calc(100dvh - 16px) !important; bottom:8px !important; padding:12px !important; gap:6px !important; }
+            #dialogue-content { font-size:18px !important; line-height:1.55 !important; }
+            #dialogue-next-guide { padding:4px 8px !important; }
+            #dialogue-next-title { font-size:15px !important; }
+            #btn-follow-next { margin:0 0 0 8px; font-size:15px !important; }
+            #dialogue-panel > div:last-child { padding-top:4px; }
+            #dialogue-hint { font-size:14px !important; }
+        }
+        @media(max-width:700px) {
+            #dialogue-panel { bottom:10px !important; padding:14px !important; max-height:78dvh !important; }
+            #dialogue-content { font-size:19px !important; line-height:1.7 !important; }
+            #dialogue-name { font-size:20px !important; }
+            #dialogue-panel > div:last-child > div { width:100%; }
+            #btn-dialogue-ok { flex:1; }
+            #visit-status { bottom:70px; left:12px; max-width:calc(100vw - 24px); font-size:14px; }
+        }
     </style>
 </head>
 <body class="relative">
@@ -286,7 +333,7 @@
                     <span id="hud-trap-stock" class="text-[11px] text-amber-200 font-normal mt-0.5">剩餘：5 個</span>
                 </button>
                 <div class="text-[11px] text-stone-400 text-center leading-tight">
-                    點擊地面自動前進<br>走近動物點擊對談與救助
+                    夜巡農場
                 </div>
             </div>
         </div>
@@ -299,7 +346,7 @@
             <span class="compass-note">地圖方向：上方為北，右方為東</span>
         </div>
 
-        <button id="mobile-data-toggle" type="button" aria-expanded="false" aria-controls="clue-board">▣ 資料夾</button>
+        <button id="mobile-data-toggle" type="button" aria-expanded="false" aria-controls="clue-board">▣ 線索與證據</button>
 
         <div id="injured-list-panel" class="hidden pointer-events-auto pixel-box rounded-xl p-3 text-white">
             <div class="text-amber-300 font-black text-lg border-b border-stone-700 pb-2">受傷動物名單</div>
@@ -319,13 +366,7 @@
             <div id="clue-sheep" class="clue-row">真相：需要三份證詞與親自採集的羊毛、狼爪印，才能找黑鼻羊對質</div>
         </div>
 
-        <!-- Help Notice & Mobile Dpad -->
-        <div class="flex items-end justify-between w-full pointer-events-none mt-auto">
-            <div class="pointer-events-none bg-black/70 backdrop-blur-sm text-stone-200 px-3 py-2 rounded-lg text-xs border border-stone-700 max-w-sm">
-                <span class="text-amber-400 font-bold">操作方式：</span>點擊地面，角色會自動走到指定位置並繞過障礙物。走近動物即可對談；開啟獸夾模式後點擊附近地面放夾。
-            </div>
-
-        </div>
+        <div id="visit-status" role="status" aria-live="polite"></div>
 
         <!-- Bottom Dialogue Box -->
         <div id="dialogue-panel" class="hidden pointer-events-auto w-full max-w-3xl mx-auto pixel-box rounded-xl p-4 md:p-5 text-white shadow-2xl relative border-amber-700 mb-2">
@@ -1609,7 +1650,7 @@
             FarmWorld.init();
             this.updateHUD();
             this.startLoop();
-            this.showToast("白天已開啟：巡視農場與動物對談，注意受傷的動物！");
+            this.showToast("白天：拜訪黑鼻羊，了解昨夜發生的事。");
         },
 
         startLoop() {
@@ -2501,6 +2542,9 @@
         const injuredListItems = document.getElementById("injured-list-items");
         const clueBoard = document.getElementById("clue-board");
         const mobileDataToggle = document.getElementById("mobile-data-toggle");
+        document.body.appendChild(dialoguePanel);
+        dialoguePanel.setAttribute("role","dialog");
+        dialoguePanel.setAttribute("aria-labelledby","dialogue-name");
         const clueSheep = document.getElementById("clue-sheep");
         const evidenceElements = {
             night_out: document.getElementById("clue-night-out"),
@@ -2570,7 +2614,7 @@
                     setPlayerDestination({x:site.x,z:site.z});
                     GameState.searchTarget = site.id;
                     document.getElementById("ui-layer").classList.remove("mobile-data-open");
-                    GameEngine.showToast("正在前往"+site.label+"，抵達後採證。");
+
                 };
                 row.appendChild(button);
                 panel.appendChild(row);
@@ -2658,7 +2702,7 @@
         mobileDataToggle.addEventListener("click", () => {
             const isOpen = document.getElementById("ui-layer").classList.toggle("mobile-data-open");
             mobileDataToggle.setAttribute("aria-expanded", String(isOpen));
-            mobileDataToggle.innerText = isOpen ? "▣ 收起資料夾" : "▣ 資料夾";
+            mobileDataToggle.innerText = isOpen ? "▣ 收起線索" : "▣ 線索與證據";
             SoundAudio.playPop();
         });
 
@@ -2688,6 +2732,7 @@
         // Closing early preserves unseen branches; finishing the last page grants evidence.
         const closeDialogue = () => {
             dialoguePanel.classList.add("hidden");
+            document.body.classList.remove("dialogue-open");
             activeReading = null;
             GameState.selectedAnimalId = null;
             SoundAudio.playPop();
@@ -2697,8 +2742,10 @@
                 activeReading.index++;
                 renderReadingPage();
             } else {
+                const next = getNextVisit();
                 finishReading();
-                closeDialogue();
+                if (next) followNextVisit(next);
+                else closeDialogue();
             }
         });
         btnCloseDialogue.addEventListener("click", closeDialogue);
@@ -2731,10 +2778,11 @@
         function renderReadingPage() {
             const reading = activeReading;
             dialogueContent.innerText = reading.pages[reading.index];
-            btnDialogueOk.innerText = reading.index < reading.pages.length - 1 ? "翻下一頁 →" : "讀完這一段 ✓";
-            dialogueHint.innerText = `第 ${reading.index + 1}／${reading.pages.length} 頁・${reading.hint}`;
+            const next = getNextVisit();
+            btnDialogueOk.innerText = reading.index < reading.pages.length - 1 ? "翻下一頁 →" : (next ? "讀完，"+next.label+" →" : "讀完 ✓");
+            dialogueHint.innerText = `第 ${reading.index + 1}／${reading.pages.length} 頁`;
             dialogueNextGuide.classList.add("hidden");
-            if (reading.index === reading.pages.length - 1) showNextCharacterGuide(readNextPointer(reading.entry) || readNextPointer(reading.data));
+            if (reading.index === reading.pages.length - 1) showNextCharacterGuide();
         }
 
         function finishReading() {
@@ -2765,27 +2813,44 @@
             return (vertical + horizontal) || "附近";
         }
 
-        function showNextCharacterGuide(pointer) {
-            const target = resolveNextCharacter(pointer);
-            if (!target || target.status === "dead") {
-                dialogueNextGuide.classList.add("hidden");
-                GameState.nextGuideTargetId = null;
-                return;
+
+        function getNextVisit() {
+            if (!activeReading) return null;
+            const reading = activeReading;
+            if (reading.entry.id === "crow-tracks") {
+                const site = GameState.searchSites.find(s=>["mud_wool","wolf_tracks"].includes(s.id) && !GameState.evidence[s.id]);
+                if (site) return {site, label:"搜索"+site.label};
             }
-            const distance = Math.max(1, Math.round(Math.hypot(target.x - GameState.player.x, target.z - GameState.player.z)));
-            dialogueNextTitle.innerText = `下一段對談：請尋找「${target.name}」`;
-            dialogueNextDetail.innerText = `位置在你的${directionFromPlayer(target)}方，約 ${distance} 格外。牠會自己在農場中移動，抵達附近後點擊牠即可繼續故事。`;
-            dialogueNextGuide.classList.remove("hidden");
-            GameState.nextGuideTargetId = target.id;
+            const target = resolveNextCharacter(readNextPointer(reading.entry) || readNextPointer(reading.data));
+            if (!target || target.status === "dead") return null;
+            return {target,label:"拜訪"+target.name};
+        }
+
+        function showNextCharacterGuide() {
+            const next = getNextVisit();
+            dialogueNextGuide.classList.toggle("hidden",!next);
+            GameState.nextGuideTargetId = next?.target?.id || null;
+            if (!next) return;
+            dialogueNextTitle.innerText = "接下來："+next.label;
+            dialogueNextDetail.innerText = "";
+            btnFollowNext.innerText = "讀完並"+next.label+" →";
+        }
+
+        function followNextVisit(next) {
+            if (next.site) {
+                setPlayerDestination({x:next.site.x,z:next.site.z});
+                GameState.searchTarget = next.site.id;
+            } else if (next.target) {
+                setPlayerDestination({x:next.target.x,z:next.target.z},next.target.id);
+            }
+            closeDialogue();
         }
 
         btnFollowNext.addEventListener("click", () => {
-            const target = GameState.getAnimal(GameState.nextGuideTargetId);
-            if (!target || target.status === "dead") return;
+            const next = getNextVisit();
+            if (!next) return;
             finishReading();
-            setPlayerDestination({ x: target.x, z: target.z }, target.id);
-            GameEngine.showToast(`已自動引導前往${target.name}，角色會持續追蹤並避開障礙物。`);
-            closeDialogue();
+            followNextVisit(next);
         });
 
         // Soothe / Calm Down animal (Eliminate panic from sheep's rumor)
@@ -2841,6 +2906,10 @@
                 injured: "我受傷了……請把我帶回紅農舍。",
                 post_rescue: "謝謝你救了我！我會和大家一起待在農舍附近。"
             };
+            document.body.classList.add("dialogue-open");
+            document.getElementById("ui-layer").classList.remove("mobile-data-open");
+            mobileDataToggle.setAttribute("aria-expanded","false");
+            mobileDataToggle.innerText = "▣ 線索與證據";
             GameState.selectedAnimalId = animal.id;
             dialogueName.innerText = scriptedEntry && scriptedEntry.listenerName
                 ? `黑鼻羊・貝克 → ${scriptedEntry.listenerName}`
@@ -2919,7 +2988,7 @@
         // Raycasting for user clicks
         window.addEventListener("pointerdown", (event) => {
             // Check if clicking inside UI elements
-            if (event.target.closest("#ui-layer") || event.target.closest("#modal-endgame")) return;
+            if (event.target.closest("#ui-layer, #dialogue-panel, #modal-endgame")) return;
 
             FarmWorld.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             FarmWorld.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -3008,7 +3077,7 @@
                             beginAutoRescue(animal);
                         } else if (distToAnimal > 2.8) {
                             setPlayerDestination({ x: animal.x, z: animal.z }, animal.id);
-                            GameEngine.showToast(`正在自動前往${animal.name}，抵達後會自動開始對談。`);
+
                         } else {
                             openDialogueForAnimal(animal);
                         }
@@ -3028,8 +3097,7 @@
                         GameState.player.autoRescuePhase = null;
                     }
                     setPlayerDestination(destination, null);
-                    if (Math.hypot(GameState.player.routeEnd.x-destination.x,GameState.player.routeEnd.z-destination.z)>0.8)
-                        GameEngine.showToast("目的地有障礙，正在前往最近可抵達的位置。");
+
                 }
             }
         });
@@ -3047,6 +3115,9 @@
                 return;
             }
             if (!GameState.gameOver && GameState.searchTarget) GameEngine.inspectEvidence(GameState.searchTarget);
+            const visitTarget = GameState.getAnimal(GameState.player.guidedTargetId);
+            const searchSite = GameState.searchSites.find(s=>s.id===GameState.searchTarget);
+            document.getElementById("visit-status").innerText = visitTarget ? "正在拜訪："+visitTarget.name : (searchSite ? "正在搜索："+searchSite.label : "");
             clock += delta * 3.5;
             GameEngine.updateRetreatingWolves(delta);
             GameState.wolves.forEach(w => {
