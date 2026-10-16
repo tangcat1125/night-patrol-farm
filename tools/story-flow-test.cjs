@@ -26,7 +26,10 @@ async function main() {
     page.on('pageerror', error => errors.push(error.message));
     await page.setContent(html);
     assert.deepEqual(errors,[]);
-    await page.evaluate(() => { GameEngine.showToast=()=>{}; GameEngine.updateHUD=()=>{}; });
+    await page.evaluate(() => {
+      GameEngine.showToast=()=>{}; GameEngine.updateHUD=()=>{};
+      let seed=1; Math.random=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
+    });
     const result = await page.evaluate(() => {
       const check=(ok,msg)=>{if(!ok)throw Error(msg)};
       const open=id=>storyTest.openDialogueForAnimal(GameState.getAnimal(id));
