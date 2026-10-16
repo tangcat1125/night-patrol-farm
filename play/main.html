@@ -595,6 +595,8 @@
         dogPatrolActive: false,
         crowGuardActive: false,
         pendingSheepDialogue: null,
+        rumorStarted: false,
+        rumorTargetId: null,
         sheepRumorCount: 0,
         sheepSuspected: false,
         dogGuardNoticeRound: -1,
@@ -1554,7 +1556,7 @@
         },
 
         tick() {
-            if (GameState.gameOver) return;
+            if (GameState.gameOver || !document.getElementById("dialogue-panel").classList.contains("hidden")) return;
 
             GameState.timer--;
 
@@ -1643,37 +1645,50 @@
         },
 
         dayAI() {
-            // 1. Sheep Limping & Rumor Spreading behavior
+            // Persist a destination and use the existing pathfinder around walls and water.
             const sheep = GameState.getAnimal("sheep");
-            if (sheep && sheep.status !== "dead") {
-                const healthyAnimals = GameState.animals.filter(a => a.id !== "sheep" && a.status === "normal");
-                if (healthyAnimals.length > 0 && Math.random() < 0.35) {
-                    const target = healthyAnimals[Math.floor(Math.random() * healthyAnimals.length)];
-                    const dx = target.x - sheep.x;
-                    const dz = target.z - sheep.z;
-                    const dist = Math.sqrt(dx*dx + dz*dz);
-                    if (dist > 1.6) {
-                        const stepX = (dx / dist) * 0.7;
-                        const stepZ = (dz / dist) * 0.7;
-                        // Avoid walking through walls
-                        if (GameState.canMoveTo(sheep.x + stepX, sheep.z + stepZ, 0.5)) {
-                            sheep.x += stepX;
-                            sheep.z += stepZ;
+            if (GameState.rumorStarted && !GameState.evidence.sheep_truth &&
+                sheep?.status === "normal" && !sheep.isCarried && !GameState.pendingSheepDialogue) {
+                let target = GameState.getAnimal(GameState.rumorTargetId);
+                if (!target || target.status !== "normal" || target.rumorHeard || target.isCarried) {
+                    target = GameState.animals.filter(a => a.id !== "sheep" &&
+                        a.status === "normal" && !a.rumorHeard && !a.isCarried)
+                        .sort((a, b) => Math.hypot(a.x-sheep.x,a.z-sheep.z) - Math.hypot(b.x-sheep.x,b.z-sheep.z))
+                        .find(a => Math.hypot(a.x-sheep.x,a.z-sheep.z) < 2 ||
+                            GameState.findPath(sheep.x,sheep.z,a.x,a.z,0.5).length);
+                    GameState.rumorTargetId = target?.id || null;
+                }
+                if (target) {
+                    if (Math.hypot(target.x-sheep.x,target.z-sheep.z) > 2) {
+                        const path = GameState.findPath(sheep.x,sheep.z,target.x,target.z,0.5);
+                        let budget = 3.2;
+                        for (const point of path) {
+                            const dx = point.x-sheep.x, dz = point.z-sheep.z;
+                            const distance = Math.hypot(dx,dz);
+                            const step = Math.min(distance,budget);
+                            if (distance && GameState.canMoveTo(sheep.x+dx/distance*step,sheep.z+dz/distance*step,0.5)) {
+                                sheep.x += dx/distance*step; sheep.z += dz/distance*step;
+                            }
+                            budget -= step;
+                            if (budget <= 0) break;
                         }
-                    } else {
-                        target.status = "panicked";
+                    }
+                    if (Math.hypot(target.x-sheep.x,target.z-sheep.z) <= 2) {
+                        target.rumorHeard = true;
+                        const isCrow = (target.species || target.id) === "crow";
+                        if (!isCrow) { target.status = "panicked"; target.rumorPanicked = true; }
                         GameState.sheepRumorCount++;
-                        if (GameState.sheepRumorCount >= 2 && !GameState.sheepSuspected) {
-                            GameState.sheepSuspected = true;
-                            this.showToast("大家開始懷疑黑鼻羊：泥坑、池塘與東邊柵欄的謠言互相矛盾！");
-                            this.recordStory("動物們開始懷疑黑鼻羊，發現牠把泥坑、池塘與東邊柵欄都說成野狼出沒地點。豬決定避開那些地方。 ");
-                        }
+                        GameState.rumorTargetId = null;
+                        const response = DIALOGUES_DATA[target.species || target.id].rumorResponse;
                         GameState.pendingSheepDialogue = {
-                            speakerId: "sheep",
-                            listenerId: target.id,
-                            text: DIALOGUES_DATA.sheep.rumor_spread || "狼就要來了！你一定要相信我！"
+                            speakerId: "sheep", listenerId: target.id,
+                            pages: [...DIALOGUES_DATA.sheep.rumor_spread.pages,
+                                ...response.pages.map(page => page.replaceAll("{name}", target.name))]
                         };
-                        this.showToast(`羊向${target.name}說了假戰鬥故事，${target.name}陷入恐慌！`);
+                        this.recordStory(isCrow
+                            ? `${target.name}沒有相信黑鼻羊，請主人向烏鴉查問昨夜的泥坑。`
+                            : `黑鼻羊向${target.name}散播搏鬥故事；${target.name}相信了，慌張地往東門張望。`);
+                        this.showToast(isCrow ? `${target.name}拍著翅膀：先問問昨晚看見了什麼！` : `${target.name}相信了黑鼻羊的受傷故事！`);
                     }
                 }
             }
@@ -1686,7 +1701,7 @@
             ];
             const isRumorAvoidZone = (x, z) => rumorAvoidZones.some(zone => Math.hypot(x - zone.x, z - zone.z) < zone.radius);
             GameState.animals.forEach(a => {
-                if (a.status !== "dead" && a.id !== "sheep" && !a.isCarried) {
+                if (a.status !== "dead" && a.id !== "sheep" && !a.isCarried && a.id !== GameState.rumorTargetId) {
                     const species = a.species || a.id;
                     if (species === "dog" && GameState.dogPatrolActive && a.status === "normal") {
                         const circuit = [
@@ -1872,8 +1887,8 @@
                         w.retreating = true;
                         w.retreatTarget = { x: w.x < 0 ? -39 : 39, z: w.z < 0 ? -35 : 35 };
                         SoundAudio.playWolfRetreat();
-                        this.recordStory(`第 ${GameState.round} 回合：${crow.name} 從空中俯衝，與野狼單挑並把牠逼退。`);
-                        this.showToast(`${crow.name} 俯衝找野狼單挑，逼退了一頭狼！`);
+                        this.recordStory(`第 ${GameState.round} 回合：${crow.name} 從空中俯衝，在狼爪碰到前振翅飛起，嘎嘎笑著把野狼引離同伴。`);
+                        this.showToast(`${crow.name} 俯衝挑戰野狼又飛回高處：「你不會飛，抓不到我！」`);
                         return;
                     }
                 }
@@ -2323,6 +2338,17 @@
                     clueElements[grant].classList.add("found");
                 } else if (STORY_BRANCHES.evidence[grant]) {
                     GameState.evidence[grant] = true;
+                    if (grant === "crow_tracks") GameState.sheepSuspected = true;
+                    if (grant === "sheep_truth") {
+                        GameState.rumorStarted = false;
+                        GameState.rumorTargetId = null;
+                        GameState.pendingSheepDialogue = null;
+                        GameState.animals.forEach(a => {
+                            if (a.rumorPanicked && a.status === "panicked") a.status = "normal";
+                            a.rumorPanicked = false;
+                        });
+                        GameEngine.showToast("黑鼻羊說出真相。大家鬆了一口氣，決定一起查證真正的狼蹤。");
+                    }
                     evidenceElements[grant].innerText = STORY_BRANCHES.evidence[grant];
                     evidenceElements[grant].classList.add("found");
                 } else if (grant === "dog_patrol") {
@@ -2441,13 +2467,23 @@
             SoundAudio.playPop();
         });
 
-        // Close dialogue
+        let activeReading = null;
+        // Closing early preserves unseen branches; finishing the last page grants evidence.
         const closeDialogue = () => {
             dialoguePanel.classList.add("hidden");
+            activeReading = null;
             GameState.selectedAnimalId = null;
             SoundAudio.playPop();
         };
-        btnDialogueOk.addEventListener("click", closeDialogue);
+        btnDialogueOk.addEventListener("click", () => {
+            if (activeReading && activeReading.index < activeReading.pages.length - 1) {
+                activeReading.index++;
+                renderReadingPage();
+            } else {
+                finishReading();
+                closeDialogue();
+            }
+        });
         btnCloseDialogue.addEventListener("click", closeDialogue);
 
         // Resolve a next-character pointer from either a dialogue record or its parent JSON record.
@@ -2470,9 +2506,37 @@
         function makeDialogueEntry(value) {
             if (typeof value === "string") return { text: value };
             if (value && typeof value === "object") {
-                return { ...value, text: value.text || value.content || value.dialogue || "……" };
+                return { ...value, text: value.pages?.[0] || value.text || value.content || value.dialogue || "……" };
             }
             return { text: "……" };
+        }
+
+        function renderReadingPage() {
+            const reading = activeReading;
+            dialogueContent.innerText = reading.pages[reading.index];
+            btnDialogueOk.innerText = reading.index < reading.pages.length - 1 ? "翻下一頁 →" : "讀完這一段 ✓";
+            dialogueHint.innerText = `第 ${reading.index + 1}／${reading.pages.length} 頁・${reading.hint}`;
+            dialogueNextGuide.classList.add("hidden");
+            if (reading.index === reading.pages.length - 1) showNextCharacterGuide(readNextPointer(reading.entry) || readNextPointer(reading.data));
+        }
+
+        function finishReading() {
+            if (!activeReading || activeReading.completed || activeReading.index !== activeReading.pages.length - 1) return;
+            const reading = activeReading;
+            reading.completed = true;
+            const entry = reading.entry;
+            if (!reading.scripted) {
+                if (entry.id) GameState.conversationSeen[entry.id] = true;
+                applyDialogueGrants(entry);
+                if (reading.animal.id === "sheep" && !GameState.evidence.sheep_truth && !GameState.rumorStarted && entry.id === "sheep-claim") {
+                    GameState.rumorStarted = true;
+                    GameEngine.showToast("黑鼻羊一拐一拐地走向同伴，開始講述牠的『英勇故事』……");
+                }
+            }
+            GameEngine.recordStory(`${reading.data.name || reading.animal.name}的故事：${reading.pages.join(" ")}`, {
+                type: "dialogue", scene: entry.route || "dialogue",
+                title: entry.route === "truth" ? "泥坑裡的秘密" : "農場裡的故事"
+            });
         }
 
         function directionFromPlayer(target) {
@@ -2502,6 +2566,7 @@
             if (!target || target.status === "dead") return;
             setPlayerDestination({ x: target.x, z: target.z }, target.id);
             GameEngine.showToast(`已自動引導前往${target.name}，角色會持續追蹤並避開障礙物。`);
+            finishReading();
             closeDialogue();
         });
 
@@ -2610,7 +2675,7 @@
                 dialogueTag.className = "text-xs px-2 py-0.5 rounded bg-sky-950 text-sky-200 border border-sky-700";
                 const followups = species === "sheep" && GameState.evidence.sheep_truth
                     ? (data.afterTruth || data.normal)
-                    : (GameState.sheepSuspected && data.suspicious ? data.suspicious : data.normal);
+                    : (GameState.evidence.sheep_truth && data.afterTruth ? data.afterTruth : (GameState.sheepSuspected && data.suspicious ? data.suspicious : data.normal));
                 const fallbackLines = Array.isArray(followups) && followups.length ? followups : ["今天農場陽光真好。"];
                 const count = GameState.conversationCount[species] || 0;
                 if (!branchLine) GameState.conversationCount[species] = count + 1;
@@ -2619,17 +2684,16 @@
                 dialogueHint.innerText = branchLine?.route === "truth"
                     ? "比對昨夜行蹤、池塘怪影與空中的足跡，再找黑鼻羊對質。"
                     : "查證入口後可放置網夾；五個網夾壞了無法修復。";
-                if (branchLine) GameState.conversationSeen[branchLine.id] = true;
+
             }
 
-            showNextCharacterGuide(readNextPointer(selectedEntry) || readNextPointer(data));
-            if (selectedEntry && !scriptedEntry) applyDialogueGrants(selectedEntry);
-
-            GameEngine.recordStory(`${data.name || animal.name}對主人說：「${dialogueContent.innerText}」`, {
-                type: "dialogue",
-                scene: selectedEntry?.route === "truth" ? "truth" : (selectedEntry?.route === "defense" ? "defense" : "dialogue"),
-                title: selectedEntry?.route === "truth" ? "查出黑鼻羊的謊言" : (selectedEntry?.route === "defense" ? "農場防線" : "農場裡的線索")
-            });
+            const entry = selectedEntry || {text: dialogueContent.innerText};
+            activeReading = {
+                animal, data, entry, scripted: !!scriptedEntry, index: 0,
+                pages: entry.pages?.length ? entry.pages : [entry.text],
+                hint: dialogueHint.innerText
+            };
+            renderReadingPage();
             dialoguePanel.classList.remove("hidden");
             SoundAudio.playPop();
         }
@@ -2749,6 +2813,11 @@
             const now = performance.now();
             const delta = Math.min((now - lastTime) / 1000, 0.1);
             lastTime = now;
+            if (!dialoguePanel.classList.contains("hidden")) {
+                FarmWorld.controls.update();
+                FarmWorld.renderer.render(FarmWorld.scene, FarmWorld.camera);
+                return;
+            }
             clock += delta * 3.5;
             GameEngine.updateRetreatingWolves(delta);
             GameState.wolves.forEach(w => {
@@ -2784,8 +2853,9 @@
                 if (sheep && sheep.status !== "dead") {
                     openDialogueForAnimal(sheep, false, {
                         listenerName: GameState.getAnimal(sheepConversation.listenerId)?.name || "同伴",
-                        text: sheepConversation.text
+                        pages: sheepConversation.pages
                     });
+                    return;
                 }
             }
 
