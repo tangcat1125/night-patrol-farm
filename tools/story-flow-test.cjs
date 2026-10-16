@@ -74,6 +74,10 @@ async function main() {
         check(GameEngine.inspectEvidence(site.id),'Search failed');
       }
       GameState.getAnimal('pig').status='injured';
+      check(!GameState.rumorStarted && !GameState.pendingSheepDialogue && !GameState.rumorTargetId,'Collected evidence did not stop the lie');
+      const rumorsBeforeConfession=GameState.sheepRumorCount;
+      GameEngine.dayAI();
+      check(GameState.sheepRumorCount===rumorsBeforeConfession,'Sheep lied after evidence was complete');
       open('sheep'); finish();
       check(GameState.evidence.sheep_truth&&!GameState.rumorStarted,'Confession did not stop rumor');
       check(!GameState.animals.some(a=>a.status==='panicked'),'Rumor panic not resolved');

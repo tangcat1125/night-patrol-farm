@@ -256,6 +256,7 @@
         #dialogue-panel > div { flex-shrink:0; }
         #dialogue-panel > div:first-child { display:flex; align-items:center; justify-content:space-between; margin:0; }
         #dialogue-panel > div:first-child > div { display:flex; align-items:center; gap:8px; }
+        #dialogue-panel > div:first-child > div:first-child { flex:1; min-width:0; flex-wrap:wrap; }
         #dialogue-name { margin:0; }
         #dialogue-panel > div:last-child { display:flex; justify-content:space-between; align-items:center; }
         #dialogue-panel > div:last-child > div { display:flex; gap:8px; }
@@ -317,7 +318,7 @@
                     <div class="text-stone-400">恐慌受驚嚇:</div>
                     <div id="hud-panic-count" class="font-bold text-yellow-300 text-right">0 隻</div>
                     <div class="text-stone-400">巡守回合:</div>
-                    <div id="hud-round-count" class="font-bold text-sky-300 text-right">0 / 10</div>
+                    <div id="hud-round-count" class="font-bold text-sky-300 text-right">0 / 4</div>
                 </div>
             </div>
 
@@ -332,6 +333,7 @@
                     <span>放置獸夾模式</span>
                     <span id="hud-trap-stock" class="text-[11px] text-amber-200 font-normal mt-0.5">剩餘：5 個</span>
                 </button>
+                <button id="btn-end-game" type="button" style="min-height:44px;padding:8px 12px;background:#7f2929;color:#fff1e6;border:2px solid #cf7770;border-radius:8px;font-weight:900">結束遊戲</button>
                 <div class="text-[11px] text-stone-400 text-center leading-tight">
                     夜巡農場
                 </div>
@@ -376,7 +378,10 @@
                     <h3 id="dialogue-name" class="font-black text-lg text-amber-300">動物名</h3>
                     <span id="dialogue-tag" class="text-xs px-2 py-0.5 rounded bg-stone-800 text-stone-300 border border-stone-600">正常狀態</span>
                 </div>
-                <button id="btn-close-dialogue" class="text-stone-400 hover:text-white px-2 py-1 text-sm font-bold">關閉</button>
+                <div style="display:flex;gap:8px;flex-shrink:0">
+                    <button id="btn-end-dialogue-game" type="button" style="background:#7f2929;color:#fff1e6;border-radius:6px;padding:6px 10px">結束遊戲</button>
+                    <button id="btn-close-dialogue" class="text-stone-400 hover:text-white px-2 py-1 text-sm font-bold">關閉</button>
+                </div>
             </div>
             
             <p id="dialogue-content" class="text-stone-200 text-sm md:text-base leading-relaxed min-h-[50px] mb-4">
@@ -619,7 +624,7 @@
         nightDuration: 22,
         wolvesKilled: 0,
         round: 0,
-        maxRounds: 10,
+        maxRounds: 4,
         animalsDead: 0,
         wolvesNeeded: 4,
         maxDeadAllowed: 3,
@@ -1707,11 +1712,11 @@
 
                 this.recordStory(`第 ${GameState.round} 回合：天亮，動物們回到白天活動。`);
                 this.expireUntreatedInjuries();
-                if (GameState.round >= GameState.maxRounds && GameState.animalsDead === 0 &&
-                    !GameState.animals.some(a => a.status === "injured")) {
+                if (GameState.round >= GameState.maxRounds) {
                     GameState.gameOver = true;
                     clearInterval(this.tickInterval);
-                    this.showEndModal(true, "rounds");
+                    const peaceful = GameState.animalsDead === 0 && !GameState.animals.some(a => a.status === "injured");
+                    this.showEndModal(GameState.wolvesKilled >= GameState.wolvesNeeded || peaceful, GameState.wolvesKilled >= GameState.wolvesNeeded ? "wolves" : "rounds");
                 } else {
                     // Random injury event in the morning keeps the rescue loop active.
                     this.triggerRandomMorningInjury();
@@ -1736,10 +1741,11 @@
         },
 
         dayAI() {
+            this.stopProvenRumor();
             this.updateDefenseFormation();
             // Persist a destination and use the existing pathfinder around walls and water.
             const sheep = GameState.getAnimal("sheep");
-            if (GameState.rumorStarted && !GameState.evidence.sheep_truth &&
+            if (GameState.rumorStarted && !GameState.evidence.sheep_truth && !this.hasSheepEvidence() &&
                 sheep?.status === "normal" && !sheep.isCarried && !GameState.pendingSheepDialogue) {
                 let target = GameState.getAnimal(GameState.rumorTargetId);
                 if (!target || target.status !== "normal" || target.rumorHeard || target.isCarried) {
@@ -1881,6 +1887,17 @@
         },
 
 
+        hasSheepEvidence() {
+            return ["night_out", "duck_shadow", "crow_tracks", "mud_wool", "wolf_tracks"].every(flag => GameState.evidence[flag]);
+        },
+
+        stopProvenRumor() {
+            if (!this.hasSheepEvidence() && !GameState.evidence.sheep_truth) return;
+            GameState.rumorStarted = false;
+            GameState.rumorTargetId = null;
+            GameState.pendingSheepDialogue = null;
+        },
+
         restoreTraps() {
             GameState.traps.forEach(trap => {
                 if (trap.readyRound != null && GameState.round >= trap.readyRound) {
@@ -1898,6 +1915,7 @@
             if (!site || !GameState.evidence.crow_tracks || GameState.evidence[id]) return false;
             if (Math.hypot(site.x - GameState.player.x, site.z - GameState.player.z) > 2.8) return false;
             GameState.evidence[id] = true;
+            this.stopProvenRumor();
             GameState.searchTarget = null;
             if (site.clue) {
                 GameState.discoveredClues[site.clue] = STORY_BRANCHES.clues[site.clue];
@@ -1947,7 +1965,7 @@
         },
 
         spawnNightWolves() {
-            const wolfCount = Math.max(0, (GameState.round >= 10 ? 5 : 4) - GameState.wolves.filter(w => w.captured && !w.isDead).length);
+            const wolfCount = Math.max(0, 4 - GameState.wolves.filter(w => w.captured && !w.isDead).length);
             const cluePoints = {
                 north: { x: 0, z: -19, dir: "北方臭水溝" },
                 west: { x: -19, z: 2, dir: "西方木門" },
@@ -2442,6 +2460,21 @@
             });
         },
 
+        endForTeacher() {
+            if (GameState.gameOver) return;
+            GameState.gameOver = true;
+            clearInterval(this.tickInterval);
+            GameState.player.destination = null;
+            GameState.player.path = [];
+            GameState.player.guidedTargetId = null;
+            GameState.searchTarget = null;
+            GameState.pendingSheepDialogue = null;
+            document.body.classList.remove("dialogue-open");
+            document.getElementById("dialogue-panel").classList.add("hidden");
+            this.recordStory("老師結束了這次巡守，大家一起回顧已經發現的證據與合作經過。", {type:"ending",scene:"ending"});
+            this.showEndModal(false, "teacher");
+        },
+
         showEndModal(isWin, ending = "wolves") {
             const modal = document.getElementById("modal-endgame");
             const title = document.getElementById("modal-title");
@@ -2449,16 +2482,24 @@
             const printButton = document.getElementById("btn-print-storybook");
             modal.classList.remove("hidden");
 
-            this.recordStory(isWin ? "農場迎來新的早晨，大家把這段巡守記成了一本繪本。" : "迷霧籠罩農場，這段失守的夜晚也被記進了繪本。", { type: "ending", scene: "ending", title: isWin ? "平安迎來黎明" : "迷霧中的結局" });
+            if (ending !== "teacher") this.recordStory(isWin ? "農場迎來新的早晨，大家把這段巡守記成了一本繪本。" : "迷霧籠罩農場，這段失守的夜晚也被記進了繪本。", { type: "ending", scene: "ending", title: isWin ? "平安迎來黎明" : "迷霧中的結局" });
             const story = GameState.storyLog.slice(-18).join("\n");
-            if (isWin && ending === "rounds") {
-                title.innerText = "十回合的和平農場：全員無傷！";
+            if (ending === "teacher") {
+                title.innerText = "本次巡守結束";
+                title.className = "text-2xl font-black mb-3 text-amber-400";
+                desc.innerText = `老師已提前結束遊戲。\n目前第 ${GameState.round}／${GameState.maxRounds} 回合，制伏 ${GameState.wolvesKilled} 頭野狼，找到 ${Object.keys(GameState.evidence).filter(key => GameState.evidence[key]).length} 項證據。\n\n【農場故事紀錄】\n${story}`;
+            } else if (isWin && ending === "rounds") {
+                title.innerText = "四回合的和平農場：全員無傷！";
                 title.className = "text-2xl font-black mb-3 text-emerald-400";
-                desc.innerText = `你讓主人與動物們平安度過十個日夜，沒有任何動物死傷。\n\n【農場故事紀錄】\n${story}`;
+                desc.innerText = `你讓主人與動物們平安度過四個日夜，沒有任何動物死傷。\n\n【農場故事紀錄】\n${story}`;
             } else if (isWin) {
                 title.innerText = "大獲全勝：四頭野狼終於被制伏！";
                 title.className = "text-2xl font-black mb-3 text-emerald-400";
                 desc.innerText = `你冷靜辨別了羊的吹牛與謊言，並用網子與守備讓四頭野狼失去戰力。\n\n【農場故事紀錄】\n${story}`;
+            } else if (ending === "rounds") {
+                title.innerText = "四回合巡守結束：還有夥伴需要照顧";
+                title.className = "text-2xl font-black mb-3 text-amber-400";
+                desc.innerText = `四個日夜已經結束，農場犧牲了 ${GameState.animalsDead} 隻動物，還有 ${GameState.animals.filter(a => a.status === "injured").length} 隻等待治療。\n\n【農場故事紀錄】\n${story}`;
             } else {
                 title.innerText = "最惡結局：農場在狼群陰影下淪陷";
                 title.className = "text-2xl font-black mb-3 text-rose-500";
@@ -2542,6 +2583,8 @@
         const injuredListItems = document.getElementById("injured-list-items");
         const clueBoard = document.getElementById("clue-board");
         const mobileDataToggle = document.getElementById("mobile-data-toggle");
+        document.getElementById("btn-end-game").addEventListener("click", () => GameEngine.endForTeacher());
+        document.getElementById("btn-end-dialogue-game").addEventListener("click", () => GameEngine.endForTeacher());
         document.body.appendChild(dialoguePanel);
         dialoguePanel.setAttribute("role","dialog");
         dialoguePanel.setAttribute("aria-labelledby","dialogue-name");
@@ -2628,6 +2671,10 @@
 
         function nextBranchDialogue(species) {
             const lines = STORY_BRANCHES.conversations[species] || [];
+            if (species === "sheep") {
+                if (GameState.evidence.sheep_truth) return null;
+                if (GameEngine.hasSheepEvidence()) return lines.find(line => line.id === "sheep-confession") || null;
+            }
             const available = lines.filter(line =>
                 (line.requires || []).every(flag => GameState.evidence[flag]));
             return available.find(line => !GameState.conversationSeen[line.id]) || null;
@@ -2794,7 +2841,7 @@
                 if (entry.id) GameState.conversationSeen[entry.id] = true;
                 applyDialogueGrants(entry);
                 if ((reading.animal.species || reading.animal.id) === "dog") GameState.dogPatrolActive = true;
-                if (reading.animal.id === "sheep" && !GameState.evidence.sheep_truth && !GameState.rumorStarted && entry.id === "sheep-claim") {
+                if (reading.animal.id === "sheep" && !GameState.evidence.sheep_truth && !GameEngine.hasSheepEvidence() && !GameState.rumorStarted && entry.id === "sheep-claim") {
                     GameState.rumorStarted = true;
                     GameEngine.showToast("黑鼻羊一拐一拐地走向同伴，開始講述牠的『英勇故事』……");
                 }
@@ -2899,6 +2946,10 @@
 
         // Display dialogue box for animal
         function openDialogueForAnimal(animal, justRescued = false, scriptedEntry = null) {
+            if (animal.id === "sheep" && (GameEngine.hasSheepEvidence() || GameState.evidence.sheep_truth)) {
+                GameEngine.stopProvenRumor();
+                scriptedEntry = null;
+            }
             const species = animal.species || animal.id;
             const data = DIALOGUES_DATA[species] || {
                 name: animal.name,

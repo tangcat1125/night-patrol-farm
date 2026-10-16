@@ -45,7 +45,7 @@ async function main() {
       assert(!await page.locator('#toast-banner').isVisible(),'Toast covers reading');
       assert(await page.evaluate(()=>document.getElementById('dialogue-panel').parentElement===document.body),'Dialogue trapped in HUD stacking context');
       while(await page.evaluate(()=>storyTest.getReading().index<storyTest.getReading().pages.length-1))await page.locator('#btn-dialogue-ok').click();
-      for(const selector of ['#btn-dialogue-ok','#btn-follow-next']){
+      for(const selector of ['#btn-dialogue-ok','#btn-follow-next','#btn-end-dialogue-game']){
         const result=await page.locator(selector).evaluate(el=>{
           const r=el.getBoundingClientRect();return {inside:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight,hit:el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))};
         });
@@ -67,6 +67,10 @@ async function main() {
     while(await page.evaluate(()=>storyTest.getReading().index<storyTest.getReading().pages.length-1))await page.locator('#btn-dialogue-ok').click();
     await page.locator('#btn-follow-next').click();
     assert(await page.evaluate(()=>GameState.evidence.crow_tracks&&GameState.searchTarget==='mud_wool'),'Crow follow did not unlock field search');
+    await page.evaluate(()=>{ GameEngine.showEndModal=GameEngine.showEndModalOriginal || GameEngine.showEndModal; storyTest.openDialogueForAnimal(GameState.getAnimal('sheep')); });
+    await page.locator('#btn-end-dialogue-game').click();
+    assert(await page.evaluate(()=>GameState.gameOver&&!GameState.player.destination),'Teacher end did not stop game');
+    assert(!await page.locator('#dialogue-panel').isVisible(),'Teacher end left reading open');
     assert.deepEqual(errors,[]);
     console.log('HUD passed: 1440px desktop, 390px portrait and 844px landscape; drawer collapse, topmost centered dialogue, visible clickable actions, next-character navigation and crow-to-search transition.');
   } finally {await browser.close();}

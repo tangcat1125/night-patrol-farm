@@ -54,4 +54,12 @@ assert.equal(s.wolves[0].health,1,'sentry failed to extend defense range');e.nig
 assert.equal(s.wolvesKilled,1,'kick kill not counted');
 s.wolvesKilled=3;s.wolves=[{id:'last',x:-7,z:11.5,isDead:false,health:1}];e.nightAI();
 assert.equal(s.wolvesKilled,4);assert(s.gameOver,'kill did not trigger victory');
-console.log('Defense rules passed: crow gate, five physical search sites, persistent capture, rescue, route avoidance, exact three-round cooldown, sentry warning, kicks and victory.');
+for (const injured of [false,true]) {
+ c=make();s=c.s;e=c.e;assert.equal(s.maxRounds,4);
+ s.phase='Night';s.round=4;s.animals=[{id:'pig',status:injured?'injured':'normal',injuredRounds:0}];
+ let outcome;e.showEndModal=(win,ending)=>outcome={win,ending};
+ e.togglePhase();assert(s.gameOver,'Fourth dawn did not end game');
+ assert.equal(outcome.ending,'rounds');assert.equal(outcome.win,!injured);
+ e.tick();assert.equal(s.round,4,'Game entered a fifth round');
+}
+console.log('Defense rules passed: search gates, persistent capture, rescue, route avoidance, three-round cooldown, kicks, victory and four-round ending.');
