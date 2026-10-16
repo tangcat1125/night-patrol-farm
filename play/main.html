@@ -689,40 +689,91 @@
             return true;
         },
 
-        // Grid A* substitute: breadth-first search is predictable for this small farm map.
+        // Validate the entire segment, not only its endpoint, against expanded colliders.
+        canTraverse(fromX, fromZ, toX, toZ, radius = 0.45) {
+            if (!this.canMoveTo(fromX, fromZ, radius) || !this.canMoveTo(toX, toZ, radius)) return false;
+            for (const c of this.colliders) {
+                let enter = 0, exit = 1;
+                for (const [origin, delta, min, max] of [
+                    [fromX, toX-fromX, c.xMin-radius+1e-7, c.xMax+radius-1e-7],
+                    [fromZ, toZ-fromZ, c.zMin-radius+1e-7, c.zMax+radius-1e-7]
+                ]) {
+                    if (Math.abs(delta) < 1e-10) {
+                        if (origin < min || origin > max) { enter = 2; break; }
+                    } else {
+                        const a = (min-origin)/delta, b = (max-origin)/delta;
+                        enter = Math.max(enter, Math.min(a,b));
+                        exit = Math.min(exit, Math.max(a,b));
+                    }
+                }
+                if (enter <= exit && enter <= 1 && exit >= 0) return false;
+            }
+            return true;
+        },
+
         findPath(startX, startZ, targetX, targetZ, radius = 0.45) {
-            const snap = (value) => Math.max(-32, Math.min(32, Math.round(value)));
-            const start = { x: snap(startX), z: snap(startZ) };
-            const goal = { x: snap(targetX), z: snap(targetZ) };
-            const key = (x, z) => `${x},${z}`;
-            const queue = [start];
-            const cameFrom = new Map([[key(start.x, start.z), null]]);
-            const dirs = [
-                [1, 0], [-1, 0], [0, 1], [0, -1],
-                [1, 1], [1, -1], [-1, 1], [-1, -1]
-            ];
-            let found = false;
-            while (queue.length) {
-                const current = queue.shift();
-                if (current.x === goal.x && current.z === goal.z) { found = true; break; }
-                for (const [dx, dz] of dirs) {
-                    const nx = current.x + dx;
-                    const nz = current.z + dz;
-                    const nextKey = key(nx, nz);
-                    if (cameFrom.has(nextKey) || !this.canMoveTo(nx, nz, radius)) continue;
-                    if (dx !== 0 && dz !== 0 && (!this.canMoveTo(current.x + dx, current.z, radius) || !this.canMoveTo(current.x, current.z + dz, radius))) continue;
-                    cameFrom.set(nextKey, current);
-                    queue.push({ x: nx, z: nz });
+            const goal = {x: Math.max(-32,Math.min(32,targetX)), z: Math.max(-32,Math.min(32,targetZ))};
+            if (this.canTraverse(startX,startZ,goal.x,goal.z,radius)) return [goal];
+            // Connect the actual fractional position to a visible free grid point.
+            // Rounding blindly can put the start/goal inside a fence or pond.
+            const starts = [];
+            for (let x=Math.max(-32,Math.floor(startX)-2); x<=Math.min(32,Math.ceil(startX)+2); x++)
+                for (let z=Math.max(-32,Math.floor(startZ)-2); z<=Math.min(32,Math.ceil(startZ)+2); z++)
+                    if (this.canTraverse(startX,startZ,x,z,radius)) starts.push({x,z});
+            starts.sort((a,b)=>Math.hypot(a.x-startX,a.z-startZ)-Math.hypot(b.x-startX,b.z-startZ));
+            if (!starts.length) return [];
+            const start = starts[0], key=(x,z)=>x+","+z;
+            const queue=[start], parents=new Map([[key(start.x,start.z),null]]);
+            const dirs=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+            let nearest=start, nearestDistance=Infinity, exactEnd=null;
+            for (let head=0;head<queue.length;head++) {
+                const current=queue[head];
+                const distance=Math.hypot(current.x-goal.x,current.z-goal.z);
+                if (distance<nearestDistance-1e-6) {nearest=current;nearestDistance=distance;}
+                if (distance<=1.5 && this.canTraverse(current.x,current.z,goal.x,goal.z,radius)) {
+                    exactEnd=current;break;
+                }
+                for (const [dx,dz] of dirs) {
+                    const x=current.x+dx,z=current.z+dz,k=key(x,z);
+                    if (x < -32 || x > 32 || z < -32 || z > 32 || parents.has(k) ||
+                        !this.canTraverse(current.x,current.z,x,z,radius)) continue;
+                    parents.set(k,current);queue.push({x,z});
                 }
             }
-            if (!found) return [];
-            const path = [];
-            let cursor = goal;
-            while (cursor && !(cursor.x === start.x && cursor.z === start.z)) {
-                path.unshift({ x: cursor.x, z: cursor.z });
-                cursor = cameFrom.get(key(cursor.x, cursor.z));
+            const route=[];
+            let cursor=exactEnd || nearest;
+            while (cursor) {route.unshift(cursor);cursor=parents.get(key(cursor.x,cursor.z));}
+            if (exactEnd && Math.hypot(route.at(-1).x-goal.x,route.at(-1).z-goal.z)>1e-7) route.push(goal);
+            return route;
+        },
+
+        planPlayerRoute(goal) {
+            const player=this.player;
+            player.pathGoal={...goal};
+            player.path=this.findPath(player.x,player.z,goal.x,goal.z,0.45);
+            player.routeEnd=player.path.length ? {...player.path.at(-1)} : {x:player.x,z:player.z};
+            player.destination=player.path.shift() || null;
+            player.moving=!!player.destination;
+        },
+
+        advancePlayer(delta) {
+            const p=this.player, before={x:p.x,z:p.z};
+            let budget=p.speed*Math.min(Math.max(delta,0),0.1), replanned=false;
+            while (p.destination && budget>1e-8) {
+                const point=p.destination, distance=Math.hypot(point.x-p.x,point.z-p.z);
+                if (distance<1e-7) {p.destination=p.path.shift() || null;continue;}
+                if (!this.canTraverse(p.x,p.z,point.x,point.z,0.45)) {
+                    if (replanned || !p.pathGoal) break;
+                    this.planPlayerRoute(p.pathGoal);replanned=true;continue;
+                }
+                const step=Math.min(budget,distance);
+                p.x+=(point.x-p.x)/distance*step;p.z+=(point.z-p.z)/distance*step;
+                budget-=step;
+                if (step>=distance-1e-8) {p.x=point.x;p.z=point.z;p.destination=p.path.shift() || null;}
             }
-            return path;
+            const dx=p.x-before.x,dz=p.z-before.z,length=Math.hypot(dx,dz);
+            p.moving=length>1e-8;
+            return {isMoving:p.moving,dirX:length?dx/length:0,dirZ:length?dz/length:0};
         }
     };
     </script>
@@ -2371,12 +2422,8 @@
         function setPlayerDestination(destination, guidedTargetId = null, forceRepath = true) {
             const player = GameState.player;
             player.guidedTargetId = guidedTargetId;
-            player.destination = destination;
-            if (forceRepath || !player.path.length) {
-                player.path = GameState.findPath(player.x, player.z, destination.x, destination.z, 0.45);
-                player.pathGoal = { x: destination.x, z: destination.z };
-            }
-            player.destination = player.path.length ? player.path.shift() : destination;
+            if (forceRepath || !player.destination) GameState.planPlayerRoute(destination);
+            closeDialogue();
         }
 
         function beginAutoRescue(animal) {
@@ -2564,9 +2611,9 @@
         btnFollowNext.addEventListener("click", () => {
             const target = GameState.getAnimal(GameState.nextGuideTargetId);
             if (!target || target.status === "dead") return;
+            finishReading();
             setPlayerDestination({ x: target.x, z: target.z }, target.id);
             GameEngine.showToast(`已自動引導前往${target.name}，角色會持續追蹤並避開障礙物。`);
-            finishReading();
             closeDialogue();
         });
 
@@ -2722,7 +2769,7 @@
                 // the animal hit so an intentionally clicked character responds.
                 const hit = GameState.isPlacingTrap
                     ? (intersects.find(item => item.object.name === "Ground") || intersects[0])
-                    : (intersects.find(isAnimalHit) || intersects[0]);
+                    : (intersects.find(isAnimalHit) || intersects.find(item => item.object.name === "Ground" || item.object.parent?.name === "Ground") || intersects[0]);
                 const hitObj = hit.object;
 
                 // Check distance to player
@@ -2794,14 +2841,16 @@
                         x: Math.max(-32, Math.min(32, hit.point.x)),
                         z: Math.max(-32, Math.min(32, hit.point.z))
                     };
-                    if (GameState.canMoveTo(destination.x, destination.z, 0.45)) {
-                        GameState.player.guidedTargetId = null;
+                    GameState.player.guidedTargetId = null;
+                    // A new ground command overrides a rescue approach. If carrying, the
+                    // rescue remains active so the animal is still safely delivered.
+                    if (!GameState.player.carryingAnimalId) {
                         GameState.player.autoRescueTargetId = null;
                         GameState.player.autoRescuePhase = null;
-                        setPlayerDestination(destination, null);
-                    } else {
-                        GameEngine.showToast("這個位置有障礙物，請點擊附近的空地！");
                     }
+                    setPlayerDestination(destination, null);
+                    if (Math.hypot(GameState.player.routeEnd.x-destination.x,GameState.player.routeEnd.z-destination.z)>0.8)
+                        GameEngine.showToast("目的地有障礙，正在前往最近可抵達的位置。");
                 }
             }
         });
@@ -2846,7 +2895,7 @@
             });
 
             // Sheep initiates an on-field rumor conversation with the animal it approached.
-            if (GameState.pendingSheepDialogue && dialoguePanel.classList.contains("hidden")) {
+            if (GameState.pendingSheepDialogue && !GameState.player.destination && !GameState.player.guidedTargetId && !GameState.player.autoRescueTargetId && dialoguePanel.classList.contains("hidden")) {
                 const sheepConversation = GameState.pendingSheepDialogue;
                 GameState.pendingSheepDialogue = null;
                 const sheep = GameState.getAnimal(sheepConversation.speakerId);
@@ -2860,9 +2909,6 @@
             }
 
             // 1. Player Movement & Collision Resolution
-            let moveX = 0;
-            let moveZ = 0;
-            let destination = GameState.player.destination;
             const autoRescueTarget = GameState.player.autoRescueTargetId
                 ? GameState.getAnimal(GameState.player.autoRescueTargetId)
                 : null;
@@ -2927,73 +2973,10 @@
                 GameState.player.guidedTargetId = null;
                 GameState.player.destination = null;
             }
-            destination = GameState.player.destination;
-            if (destination) {
-                moveX = destination.x - GameState.player.x;
-                moveZ = destination.z - GameState.player.z;
-                if (Math.hypot(moveX, moveZ) < 0.35) {
-                    GameState.player.x = destination.x;
-                    GameState.player.z = destination.z;
-                    if (GameState.player.path.length) {
-                        GameState.player.destination = GameState.player.path.shift();
-                        moveX = GameState.player.destination.x - GameState.player.x;
-                        moveZ = GameState.player.destination.z - GameState.player.z;
-                    } else {
-                        GameState.player.destination = null;
-                        moveX = 0;
-                        moveZ = 0;
-                    }
-                }
-            }
+            const {isMoving,dirX,dirZ}=GameState.gameOver
+                ? {isMoving:false,dirX:0,dirZ:0} : GameState.advancePlayer(delta);
 
-            const isMoving = (moveX !== 0 || moveZ !== 0);
-            GameState.player.moving = isMoving;
-
-            if (isMoving && !GameState.gameOver) {
-                // Normalize isometric movement direction
-                const len = Math.hypot(moveX, moveZ);
-                const dirX = (moveX / len);
-                const dirZ = (moveZ / len);
-                const step = Math.min(GameState.player.speed * delta, Math.hypot(moveX, moveZ));
-
-                // Attempt movement with wall collision test
-                const nextX = GameState.player.x + dirX * step;
-                const nextZ = GameState.player.z + dirZ * step;
-
-                if (GameState.canMoveTo(nextX, nextZ, 0.45)) {
-                    GameState.player.x = nextX;
-                    GameState.player.z = nextZ;
-                } else {
-                    // Slide along X or Z if one direction is clear
-                    if (GameState.canMoveTo(nextX, GameState.player.z, 0.45)) {
-                        GameState.player.x = nextX;
-                    } else if (GameState.canMoveTo(GameState.player.x, nextZ, 0.45)) {
-                        GameState.player.z = nextZ;
-                    } else {
-                        // Keep the destination and automatically choose a diagonal detour.
-                        const detours = [
-                            { x: dirX - dirZ, z: dirZ + dirX },
-                            { x: dirX + dirZ, z: dirZ - dirX },
-                            { x: -dirZ, z: dirX },
-                            { x: dirZ, z: -dirX }
-                        ];
-                        detours.sort((a, b) => {
-                            const ad = Math.hypot(destination.x - (GameState.player.x + a.x * step), destination.z - (GameState.player.z + a.z * step));
-                            const bd = Math.hypot(destination.x - (GameState.player.x + b.x * step), destination.z - (GameState.player.z + b.z * step));
-                            return ad - bd;
-                        });
-                        const detour = detours.find(option => {
-                            const len = Math.hypot(option.x, option.z) || 1;
-                            return GameState.canMoveTo(GameState.player.x + option.x / len * step, GameState.player.z + option.z / len * step, 0.45);
-                        });
-                        if (detour) {
-                            const detourLen = Math.hypot(detour.x, detour.z) || 1;
-                            GameState.player.x += detour.x / detourLen * step;
-                            GameState.player.z += detour.z / detourLen * step;
-                        }
-                    }
-                }
-
+            if (isMoving) {
                 // Rotate player mesh towards movement direction
                 if (GameState.player.mesh) {
                     GameState.player.mesh.position.set(GameState.player.x, 0, GameState.player.z);
