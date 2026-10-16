@@ -12,7 +12,7 @@ for (const [id, lines] of Object.entries(branches.conversations)) {
   if (!animals[id]) throw new Error(`Missing animal: ${id}`);
   for (const line of lines) {
     for (const grant of line.grants || []) {
-      if (!branches.evidence[grant] && !branches.clues[grant] && !['dog_patrol', 'crow_guard'].includes(grant)) {
+      if (!branches.evidence[grant] && !branches.clues[grant] && !['dog_patrol', 'crow_guard', 'cooperative_defense'].includes(grant)) {
         throw new Error(`Unknown grant ${grant} in ${line.id}`);
       }
     }

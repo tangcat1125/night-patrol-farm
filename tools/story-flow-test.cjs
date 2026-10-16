@@ -17,7 +17,7 @@ async function main() {
   html = html.replace('        // Raycasting for user clicks', 'window.storyTest = {openDialogueForAnimal, closeDialogue, getReading: () => activeReading};\n        // Raycasting for user clicks');
   const bundle = fs.readFileSync(path.join(root, 'dialogues/bundle.js'), 'utf8');
   html = html.replace('<head>', '<head><style>.hidden{display:none!important}</style><script>' + bundle +
-    'const SoundAudio = new Proxy({}, {get:()=>()=>{}}); const FarmWorld={animalMeshes:{}};<\/script>');
+    'const SoundAudio = new Proxy({}, {get:()=>()=>{}}); const THREE={Mesh:class{constructor(){this.position={set(){}}}},BoxGeometry:class{},MeshBasicMaterial:class{}}; const FarmWorld={animalMeshes:{},scene:{add(){},getObjectByName(){return null}}};<\/script>');
   const browser = await chromium.launch({headless:true,
     ...(process.env.STORY_BROWSER_EXECUTABLE ? {executablePath:process.env.STORY_BROWSER_EXECUTABLE} : {channel:'chrome'})});
   try {
@@ -65,11 +65,23 @@ async function main() {
         finish();
         check(GameState.evidence[flag],'Evidence missing: '+flag);
       }
+      open('sheep'); finish();
+      check(!GameState.evidence.sheep_truth,'Confessed before physical search');
+      for (const site of GameState.searchSites) {
+        GameState.player.x=0;GameState.player.z=30;
+        check(!GameEngine.inspectEvidence(site.id),'Remote evidence collection');
+        GameState.player.x=site.x;GameState.player.z=site.z;
+        check(GameEngine.inspectEvidence(site.id),'Search failed');
+      }
       GameState.getAnimal('pig').status='injured';
       open('sheep'); finish();
       check(GameState.evidence.sheep_truth&&!GameState.rumorStarted,'Confession did not stop rumor');
       check(!GameState.animals.some(a=>a.status==='panicked'),'Rumor panic not resolved');
       check(GameState.getAnimal('pig').status==='injured','Confession healed injury');
+      open('cow'); finish();
+      check(GameState.defenseActive,'Cow did not form cooperative defense after apology');
+      open('dog'); finish();
+      check(GameState.dogPatrolActive,'Dog dialogue did not enable fast patrol');
       const count=GameState.sheepRumorCount;
       for(let i=0;i<20;i++)GameEngine.dayAI();
       check(GameState.sheepRumorCount===count,'Rumor restarted after truth');
