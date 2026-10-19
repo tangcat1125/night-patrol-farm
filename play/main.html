@@ -189,7 +189,9 @@
         #dialogue-next-guide strong { color: #7dd3fc; font-size: 1.05rem; }
         #dialogue-next-guide small { display: block; margin-top: .2rem; color: #dbeafe; font-size: .95rem; line-height: 1.55; }
         #btn-follow-next { margin-top: .55rem; padding: .4rem .7rem; border-radius: .35rem; background: #0284c7; color: white; font-weight: 900; }
-        #top-hud { max-width: none !important; margin-left: 0 !important; margin-right: 0 !important; justify-content: flex-start; }
+        #top-hud { max-width: none !important; margin-left: 0 !important; margin-right: 0 !important; justify-content: flex-start; pointer-events: none; }
+        #top-hud > .pixel-box:not(#toast-banner) { pointer-events: auto; }
+        #toast-banner { pointer-events: none; }
         #top-hud > .min-w-\[170px\] { margin-left: auto; }
         #top-hud .pixel-box { padding: 1.1rem !important; }
         #top-hud .grid.grid-cols-2 { font-size: 1.12rem; line-height: 1.8; }
@@ -262,6 +264,54 @@
             #ui-layer:not(.mobile-data-open) #clue-board { display: none !important; }
             #ui-layer.mobile-data-open #clue-board { display: block !important; }
         }
+
+        /* One bottom drawer for clues; the reading surface lives above every HUD. */
+        #mobile-data-toggle { display:flex !important; position:fixed; left:50%; right:auto; bottom:12px; transform:translateX(-50%); z-index:80; min-height:44px; padding:10px 22px; border:2px solid #f59e0b; border-radius:12px; background:#291b13; color:#fff0c2; font-weight:900; pointer-events:auto; }
+        #clue-board { display:none !important; position:fixed; left:50%; right:auto; top:auto; bottom:70px; transform:translateX(-50%); width:min(760px,calc(100vw - 24px)); max-height:55dvh; overflow:auto; z-index:79; pointer-events:auto; }
+        #ui-layer.mobile-data-open #clue-board { display:block !important; }
+        #visit-status { position:fixed; left:16px; bottom:16px; z-index:70; max-width:calc(50vw - 110px); padding:10px 14px; border:1px solid #ad8456; border-radius:10px; color:#ffedc5; background:rgba(33,23,16,.94); font-size:16px; font-weight:700; pointer-events:none; }
+        #visit-status:empty { display:none; }
+        body.dialogue-open #toast-banner, body.dialogue-open #clue-board, body.dialogue-open #mobile-data-toggle, body.dialogue-open #visit-status, body.dialogue-open #injured-list-panel { display:none !important; }
+        #dialogue-panel { position:fixed !important; left:50% !important; right:auto !important; top:auto !important; bottom:16px !important; transform:translateX(-50%); width:min(960px,calc(100vw - 24px)) !important; max-width:none !important; max-height:76dvh !important; margin:0 !important; z-index:1000 !important; padding:20px !important; overflow:hidden !important; background:#20170f; box-shadow:0 0 0 100vmax rgba(0,0,0,.23),0 12px 40px #000; isolation:isolate; }
+        #dialogue-panel:not(.hidden) { display:flex; flex-direction:column; gap:10px; }
+        #dialogue-panel { color:#fff2d8; }
+        #dialogue-content { color:#f5eadb; }
+        #dialogue-hint { color:#d5c6b6; }
+        #dialogue-name { color:#fcd36b; }
+        #btn-dialogue-ok { color:#24170c; background:#f5be59; border:2px solid #ffd888; border-radius:8px; padding:10px 18px; font-weight:900; }
+        #btn-close-dialogue { color:#f5eadb; background:#493429; border-radius:6px; }
+        #ui-layer { color:#f5eadb; }
+        #dialogue-panel > div { flex-shrink:0; }
+        #dialogue-panel > div:first-child { display:flex; align-items:center; justify-content:space-between; margin:0; }
+        #dialogue-panel > div:first-child > div { display:flex; align-items:center; gap:8px; }
+        #dialogue-panel > div:first-child > div:first-child { flex:1; min-width:0; flex-wrap:wrap; }
+        #dialogue-name { margin:0; }
+        #dialogue-panel > div:last-child { display:flex; justify-content:space-between; align-items:center; }
+        #dialogue-panel > div:last-child > div { display:flex; gap:8px; }
+        #dialogue-content { flex:1 1 auto; min-height:0 !important; overflow-y:auto; margin:0 !important; font-size:clamp(19px,1.7vw,24px) !important; line-height:1.85 !important; }
+        #dialogue-next-guide { margin:0 !important; padding:10px 14px !important; }
+        #dialogue-next-detail { display:none !important; }
+        #dialogue-panel button { min-height:44px; touch-action:manipulation; }
+        #dialogue-panel > div:last-child { flex-wrap:wrap; gap:10px; }
+        #dialogue-panel > div:last-child > div { flex-wrap:wrap; }
+        #modal-endgame { z-index:2000; }
+        @media(max-height:500px) {
+            #dialogue-panel { max-height:calc(100dvh - 16px) !important; bottom:8px !important; padding:12px !important; gap:6px !important; }
+            #dialogue-content { font-size:18px !important; line-height:1.55 !important; }
+            #dialogue-next-guide { padding:4px 8px !important; }
+            #dialogue-next-title { font-size:15px !important; }
+            #btn-follow-next { margin:0 0 0 8px; font-size:15px !important; }
+            #dialogue-panel > div:last-child { padding-top:4px; }
+            #dialogue-hint { font-size:14px !important; }
+        }
+        @media(max-width:700px) {
+            #dialogue-panel { bottom:10px !important; padding:14px !important; max-height:78dvh !important; }
+            #dialogue-content { font-size:19px !important; line-height:1.7 !important; }
+            #dialogue-name { font-size:20px !important; }
+            #dialogue-panel > div:last-child > div { width:100%; }
+            #btn-dialogue-ok { flex:1; }
+            #visit-status { bottom:70px; left:12px; max-width:calc(100vw - 24px); font-size:14px; }
+        }
     </style>
 </head>
 <body class="relative">
@@ -279,7 +329,7 @@
 
     <div id="ui-layer" class="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 md:p-6 z-10">
         <!-- Top Stats Bar -->
-        <div id="top-hud" class="flex flex-wrap items-start justify-between gap-3 pointer-events-auto w-full max-w-5xl mx-auto">
+        <div id="top-hud" class="flex flex-wrap items-start justify-between gap-3 pointer-events-none w-full max-w-5xl mx-auto">
             <!-- Left Info Panel -->
             <div class="pixel-box rounded-lg p-3 text-white min-w-[240px]">
                 <div class="flex items-center justify-between pb-1 mb-2 border-b border-stone-700">
@@ -296,7 +346,7 @@
                     <div class="text-stone-400">恐慌受驚嚇:</div>
                     <div id="hud-panic-count" class="font-bold text-yellow-300 text-right">0 隻</div>
                     <div class="text-stone-400">巡守回合:</div>
-                    <div id="hud-round-count" class="font-bold text-sky-300 text-right">0 / 10</div>
+                    <div id="hud-round-count" class="font-bold text-sky-300 text-right">0 / 4</div>
                 </div>
             </div>
 
@@ -311,8 +361,9 @@
                     <span>放置獸夾模式</span>
                     <span id="hud-trap-stock" class="text-[11px] text-amber-200 font-normal mt-0.5">剩餘：5 個</span>
                 </button>
+                <button id="btn-end-game" type="button" style="min-height:44px;padding:8px 12px;background:#7f2929;color:#fff1e6;border:2px solid #cf7770;border-radius:8px;font-weight:900">結束遊戲</button>
                 <div class="text-[11px] text-stone-400 text-center leading-tight">
-                    點擊地面自動前進<br>走近動物點擊對談與救助
+                    夜巡農場
                 </div>
             </div>
         </div>
@@ -325,7 +376,7 @@
             <span class="compass-note">地圖方向：上方為北，右方為東</span>
         </div>
 
-        <button id="mobile-data-toggle" type="button" aria-expanded="false" aria-controls="clue-board">▣ 資料夾</button>
+        <button id="mobile-data-toggle" type="button" aria-expanded="false" aria-controls="clue-board">▣ 線索與證據</button>
 
         <div id="injured-list-panel" class="hidden pointer-events-auto pixel-box rounded-xl p-3 text-white">
             <div class="text-amber-300 font-black text-lg border-b border-stone-700 pb-2">受傷動物名單</div>
@@ -342,16 +393,10 @@
             <div id="clue-night-out" class="clue-row">昨夜行蹤：尚未查明</div>
             <div id="clue-duck-shadow" class="clue-row">池塘怪影：尚未查明</div>
             <div id="clue-crow-tracks" class="clue-row">空中足跡：尚未查明</div>
-            <div id="clue-sheep" class="clue-row">真相：還需要三份證詞，才能找黑鼻羊對質</div>
+            <div id="clue-sheep" class="clue-row">真相：需要三份證詞與親自採集的羊毛、狼爪印，才能找黑鼻羊對質</div>
         </div>
 
-        <!-- Help Notice & Mobile Dpad -->
-        <div class="flex items-end justify-between w-full pointer-events-none mt-auto">
-            <div class="pointer-events-none bg-black/70 backdrop-blur-sm text-stone-200 px-3 py-2 rounded-lg text-xs border border-stone-700 max-w-sm">
-                <span class="text-amber-400 font-bold">操作方式：</span>點擊地面，角色會自動走到指定位置並繞過障礙物。走近動物即可對談；開啟獸夾模式後點擊附近地面放夾。
-            </div>
-
-        </div>
+        <div id="visit-status" role="status" aria-live="polite"></div>
 
         <!-- Bottom Dialogue Box -->
         <div id="dialogue-panel" class="hidden pointer-events-auto w-full max-w-3xl mx-auto pixel-box rounded-xl p-4 md:p-5 text-white shadow-2xl relative border-amber-700 mb-2">
@@ -361,7 +406,10 @@
                     <h3 id="dialogue-name" class="font-black text-lg text-amber-300">動物名</h3>
                     <span id="dialogue-tag" class="text-xs px-2 py-0.5 rounded bg-stone-800 text-stone-300 border border-stone-600">正常狀態</span>
                 </div>
-                <button id="btn-close-dialogue" class="text-stone-400 hover:text-white px-2 py-1 text-sm font-bold">關閉</button>
+                <div style="display:flex;gap:8px;flex-shrink:0">
+                    <button id="btn-end-dialogue-game" type="button" style="background:#7f2929;color:#fff1e6;border-radius:6px;padding:6px 10px">結束遊戲</button>
+                    <button id="btn-close-dialogue" class="text-stone-400 hover:text-white px-2 py-1 text-sm font-bold">關閉</button>
+                </div>
             </div>
             
             <p id="dialogue-content" class="text-stone-200 text-sm md:text-base leading-relaxed min-h-[50px] mb-4">
@@ -606,13 +654,23 @@
         nightDuration: 22,
         wolvesKilled: 0,
         round: 0,
-        maxRounds: 10,
+        maxRounds: 4,
         animalsDead: 0,
         wolvesNeeded: 4,
         maxDeadAllowed: 3,
         trapInventory: 5,
         isPlacingTrap: false,
-        traps: [], // { id, x, z, mesh }
+        traps: [], // { id, x, z, capturedWolfId, readyRound }
+        avoidedRoutes: [],
+        defenseActive: false,
+        searchTarget: null,
+        searchSites: [
+            { id: "west_trace", clue: "west", x: -19, z: 2, label: "西門底下", text: "你蹲下檢查西門：底下有新刨開的土、狼毛與爪痕，和狗提供的位置相符。" },
+            { id: "wall_trace", clue: "southeast", x: 12, z: 16, label: "東南破牆", text: "你檢查矮牆破洞，發現牆緣掛著灰色狼毛，洞外也有進出的爪印。" },
+            { id: "orchard_trace", clue: "south", x: -3, z: 18, label: "南方果園", text: "你撥開廢果園倒伏的草，找到連續狼爪印，證實這裡是狼群通路。" },
+            { id: "mud_wool", x: -3, z: -11, label: "泥池旁的羊毛", text: "你在泥池邊撿到捲曲的羊毛，和貝克身上的羊毛相同；這是羊毛，不是狼毛。旁邊有滑落的蹄印和壓碎的莓果。" },
+            { id: "wolf_tracks", clue: "north", x: 5, z: -18, label: "泥池外的狼爪印", text: "你在泥池外另一段路找到狼爪印。它和羊蹄滑入泥池的痕跡分開，證明狼曾經來過，卻不能證明貝克與狼搏鬥。" }
+        ],
         wolves: [], // { id, x, z, mesh, targetId, isDead }
         storyLog: [],
         storyTimeline: [],
@@ -625,6 +683,8 @@
         dogPatrolActive: false,
         crowGuardActive: false,
         pendingSheepDialogue: null,
+        rumorStarted: false,
+        rumorTargetId: null,
         sheepRumorCount: 0,
         sheepSuspected: false,
         dogGuardNoticeRound: -1,
@@ -717,40 +777,91 @@
             return true;
         },
 
-        // Grid A* substitute: breadth-first search is predictable for this small farm map.
+        // Validate the entire segment, not only its endpoint, against expanded colliders.
+        canTraverse(fromX, fromZ, toX, toZ, radius = 0.45) {
+            if (!this.canMoveTo(fromX, fromZ, radius) || !this.canMoveTo(toX, toZ, radius)) return false;
+            for (const c of this.colliders) {
+                let enter = 0, exit = 1;
+                for (const [origin, delta, min, max] of [
+                    [fromX, toX-fromX, c.xMin-radius+1e-7, c.xMax+radius-1e-7],
+                    [fromZ, toZ-fromZ, c.zMin-radius+1e-7, c.zMax+radius-1e-7]
+                ]) {
+                    if (Math.abs(delta) < 1e-10) {
+                        if (origin < min || origin > max) { enter = 2; break; }
+                    } else {
+                        const a = (min-origin)/delta, b = (max-origin)/delta;
+                        enter = Math.max(enter, Math.min(a,b));
+                        exit = Math.min(exit, Math.max(a,b));
+                    }
+                }
+                if (enter <= exit && enter <= 1 && exit >= 0) return false;
+            }
+            return true;
+        },
+
         findPath(startX, startZ, targetX, targetZ, radius = 0.45) {
-            const snap = (value) => Math.max(-32, Math.min(32, Math.round(value)));
-            const start = { x: snap(startX), z: snap(startZ) };
-            const goal = { x: snap(targetX), z: snap(targetZ) };
-            const key = (x, z) => `${x},${z}`;
-            const queue = [start];
-            const cameFrom = new Map([[key(start.x, start.z), null]]);
-            const dirs = [
-                [1, 0], [-1, 0], [0, 1], [0, -1],
-                [1, 1], [1, -1], [-1, 1], [-1, -1]
-            ];
-            let found = false;
-            while (queue.length) {
-                const current = queue.shift();
-                if (current.x === goal.x && current.z === goal.z) { found = true; break; }
-                for (const [dx, dz] of dirs) {
-                    const nx = current.x + dx;
-                    const nz = current.z + dz;
-                    const nextKey = key(nx, nz);
-                    if (cameFrom.has(nextKey) || !this.canMoveTo(nx, nz, radius)) continue;
-                    if (dx !== 0 && dz !== 0 && (!this.canMoveTo(current.x + dx, current.z, radius) || !this.canMoveTo(current.x, current.z + dz, radius))) continue;
-                    cameFrom.set(nextKey, current);
-                    queue.push({ x: nx, z: nz });
+            const goal = {x: Math.max(-32,Math.min(32,targetX)), z: Math.max(-32,Math.min(32,targetZ))};
+            if (this.canTraverse(startX,startZ,goal.x,goal.z,radius)) return [goal];
+            // Connect the actual fractional position to a visible free grid point.
+            // Rounding blindly can put the start/goal inside a fence or pond.
+            const starts = [];
+            for (let x=Math.max(-32,Math.floor(startX)-2); x<=Math.min(32,Math.ceil(startX)+2); x++)
+                for (let z=Math.max(-32,Math.floor(startZ)-2); z<=Math.min(32,Math.ceil(startZ)+2); z++)
+                    if (this.canTraverse(startX,startZ,x,z,radius)) starts.push({x,z});
+            starts.sort((a,b)=>Math.hypot(a.x-startX,a.z-startZ)-Math.hypot(b.x-startX,b.z-startZ));
+            if (!starts.length) return [];
+            const start = starts[0], key=(x,z)=>x+","+z;
+            const queue=[start], parents=new Map([[key(start.x,start.z),null]]);
+            const dirs=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+            let nearest=start, nearestDistance=Infinity, exactEnd=null;
+            for (let head=0;head<queue.length;head++) {
+                const current=queue[head];
+                const distance=Math.hypot(current.x-goal.x,current.z-goal.z);
+                if (distance<nearestDistance-1e-6) {nearest=current;nearestDistance=distance;}
+                if (distance<=1.5 && this.canTraverse(current.x,current.z,goal.x,goal.z,radius)) {
+                    exactEnd=current;break;
+                }
+                for (const [dx,dz] of dirs) {
+                    const x=current.x+dx,z=current.z+dz,k=key(x,z);
+                    if (x < -32 || x > 32 || z < -32 || z > 32 || parents.has(k) ||
+                        !this.canTraverse(current.x,current.z,x,z,radius)) continue;
+                    parents.set(k,current);queue.push({x,z});
                 }
             }
-            if (!found) return [];
-            const path = [];
-            let cursor = goal;
-            while (cursor && !(cursor.x === start.x && cursor.z === start.z)) {
-                path.unshift({ x: cursor.x, z: cursor.z });
-                cursor = cameFrom.get(key(cursor.x, cursor.z));
+            const route=[];
+            let cursor=exactEnd || nearest;
+            while (cursor) {route.unshift(cursor);cursor=parents.get(key(cursor.x,cursor.z));}
+            if (exactEnd && Math.hypot(route.at(-1).x-goal.x,route.at(-1).z-goal.z)>1e-7) route.push(goal);
+            return route;
+        },
+
+        planPlayerRoute(goal) {
+            const player=this.player;
+            player.pathGoal={...goal};
+            player.path=this.findPath(player.x,player.z,goal.x,goal.z,0.45);
+            player.routeEnd=player.path.length ? {...player.path.at(-1)} : {x:player.x,z:player.z};
+            player.destination=player.path.shift() || null;
+            player.moving=!!player.destination;
+        },
+
+        advancePlayer(delta) {
+            const p=this.player, before={x:p.x,z:p.z};
+            let budget=p.speed*Math.min(Math.max(delta,0),0.1), replanned=false;
+            while (p.destination && budget>1e-8) {
+                const point=p.destination, distance=Math.hypot(point.x-p.x,point.z-p.z);
+                if (distance<1e-7) {p.destination=p.path.shift() || null;continue;}
+                if (!this.canTraverse(p.x,p.z,point.x,point.z,0.45)) {
+                    if (replanned || !p.pathGoal) break;
+                    this.planPlayerRoute(p.pathGoal);replanned=true;continue;
+                }
+                const step=Math.min(budget,distance);
+                p.x+=(point.x-p.x)/distance*step;p.z+=(point.z-p.z)/distance*step;
+                budget-=step;
+                if (step>=distance-1e-8) {p.x=point.x;p.z=point.z;p.destination=p.path.shift() || null;}
             }
-            return path;
+            const dx=p.x-before.x,dz=p.z-before.z,length=Math.hypot(dx,dz);
+            p.moving=length>1e-8;
+            return {isMoving:p.moving,dirX:length?dx/length:0,dirZ:length?dz/length:0};
         }
     };
     </script>
@@ -1574,7 +1685,7 @@
             FarmWorld.init();
             this.updateHUD();
             this.startLoop();
-            this.showToast("白天已開啟：巡視農場與動物對談，注意受傷的動物！");
+            this.showToast("白天：拜訪黑鼻羊，了解昨夜發生的事。");
         },
 
         startLoop() {
@@ -1584,7 +1695,7 @@
         },
 
         tick() {
-            if (GameState.gameOver) return;
+            if (GameState.gameOver || !document.getElementById("dialogue-panel").classList.contains("hidden")) return;
 
             GameState.timer--;
 
@@ -1606,6 +1717,7 @@
                 // Switch to Night
                 GameState.phase = "Night";
                 GameState.round++;
+                this.restoreTraps();
                 GameState.timer = GameState.nightDuration;
                 SoundAudio.playCycleShift(true);
                 SoundAudio.playWolfHowl();
@@ -1620,35 +1732,21 @@
                 SoundAudio.playWolfRetreat();
                 this.showToast("天亮了！未被捕的野狼正快速奔向場景外；快確認同伴情況！");
 
-                // A wolf still trapped at dawn is finally subdued by the net.
+                // Nets hold living wolves across dawns until another wolf tears them open.
                 GameState.wolves.forEach(w => {
-                    if (w.captured && !w.isDead) {
-                        w.isDead = true;
-                        GameState.wolvesKilled++;
-                        this.recordStory(`第 ${GameState.round} 回合：一頭被網住的野狼未能逃回森林。`);
-                        FarmWorld.removeWolf(w.id);
-                    } else if (!w.isDead) {
+                    if (!w.isDead && !w.captured) {
                         w.retreating = true;
-                        const edge = Math.floor(Math.random() * 4);
-                        w.retreatTarget = [
-                            { x: -39, z: (Math.random() - 0.5) * 55 },
-                            { x: 39, z: (Math.random() - 0.5) * 55 },
-                            { x: (Math.random() - 0.5) * 55, z: -39 },
-                            { x: (Math.random() - 0.5) * 55, z: 39 }
-                        ][edge];
+                        w.retreatTarget = { x: w.x < 0 ? -39 : 39, z: w.z < 0 ? -39 : 39 };
                     }
                 });
-                GameState.traps.filter(trap => trap.capturedWolfId).forEach(trap => FarmWorld.removeTrap(trap.id));
-                GameState.traps = GameState.traps.filter(trap => !trap.capturedWolfId);
-                GameState.wolves = GameState.wolves.filter(w => !w.isDead);
 
                 this.recordStory(`第 ${GameState.round} 回合：天亮，動物們回到白天活動。`);
                 this.expireUntreatedInjuries();
-                if (GameState.round >= GameState.maxRounds && GameState.animalsDead === 0 &&
-                    !GameState.animals.some(a => a.status === "injured")) {
+                if (GameState.round >= GameState.maxRounds) {
                     GameState.gameOver = true;
                     clearInterval(this.tickInterval);
-                    this.showEndModal(true, "rounds");
+                    const peaceful = GameState.animalsDead === 0 && !GameState.animals.some(a => a.status === "injured");
+                    this.showEndModal(GameState.wolvesKilled >= GameState.wolvesNeeded || peaceful, GameState.wolvesKilled >= GameState.wolvesNeeded ? "wolves" : "rounds");
                 } else {
                     // Random injury event in the morning keeps the rescue loop active.
                     this.triggerRandomMorningInjury();
@@ -1673,37 +1771,52 @@
         },
 
         dayAI() {
-            // 1. Sheep Limping & Rumor Spreading behavior
+            this.stopProvenRumor();
+            this.updateDefenseFormation();
+            // Persist a destination and use the existing pathfinder around walls and water.
             const sheep = GameState.getAnimal("sheep");
-            if (sheep && sheep.status !== "dead") {
-                const healthyAnimals = GameState.animals.filter(a => a.id !== "sheep" && a.status === "normal");
-                if (healthyAnimals.length > 0 && Math.random() < 0.35) {
-                    const target = healthyAnimals[Math.floor(Math.random() * healthyAnimals.length)];
-                    const dx = target.x - sheep.x;
-                    const dz = target.z - sheep.z;
-                    const dist = Math.sqrt(dx*dx + dz*dz);
-                    if (dist > 1.6) {
-                        const stepX = (dx / dist) * 0.7;
-                        const stepZ = (dz / dist) * 0.7;
-                        // Avoid walking through walls
-                        if (GameState.canMoveTo(sheep.x + stepX, sheep.z + stepZ, 0.5)) {
-                            sheep.x += stepX;
-                            sheep.z += stepZ;
+            if (GameState.rumorStarted && !GameState.evidence.sheep_truth && !this.hasSheepEvidence() &&
+                sheep?.status === "normal" && !sheep.isCarried && !GameState.pendingSheepDialogue) {
+                let target = GameState.getAnimal(GameState.rumorTargetId);
+                if (!target || target.status !== "normal" || target.rumorHeard || target.isCarried) {
+                    target = GameState.animals.filter(a => a.id !== "sheep" &&
+                        a.status === "normal" && !a.rumorHeard && !a.isCarried)
+                        .sort((a, b) => Math.hypot(a.x-sheep.x,a.z-sheep.z) - Math.hypot(b.x-sheep.x,b.z-sheep.z))
+                        .find(a => Math.hypot(a.x-sheep.x,a.z-sheep.z) < 2 ||
+                            GameState.findPath(sheep.x,sheep.z,a.x,a.z,0.5).length);
+                    GameState.rumorTargetId = target?.id || null;
+                }
+                if (target) {
+                    if (Math.hypot(target.x-sheep.x,target.z-sheep.z) > 2) {
+                        const path = GameState.findPath(sheep.x,sheep.z,target.x,target.z,0.5);
+                        let budget = 3.2;
+                        for (const point of path) {
+                            const dx = point.x-sheep.x, dz = point.z-sheep.z;
+                            const distance = Math.hypot(dx,dz);
+                            const step = Math.min(distance,budget);
+                            if (distance && GameState.canMoveTo(sheep.x+dx/distance*step,sheep.z+dz/distance*step,0.5)) {
+                                sheep.x += dx/distance*step; sheep.z += dz/distance*step;
+                            }
+                            budget -= step;
+                            if (budget <= 0) break;
                         }
-                    } else {
-                        target.status = "panicked";
+                    }
+                    if (Math.hypot(target.x-sheep.x,target.z-sheep.z) <= 2) {
+                        target.rumorHeard = true;
+                        const isCrow = (target.species || target.id) === "crow";
+                        if (!isCrow) { target.status = "panicked"; target.rumorPanicked = true; }
                         GameState.sheepRumorCount++;
-                        if (GameState.sheepRumorCount >= 2 && !GameState.sheepSuspected) {
-                            GameState.sheepSuspected = true;
-                            this.showToast("大家開始懷疑黑鼻羊：泥坑、池塘與東邊柵欄的謠言互相矛盾！");
-                            this.recordStory("動物們開始懷疑黑鼻羊，發現牠把泥坑、池塘與東邊柵欄都說成野狼出沒地點。豬決定避開那些地方。 ");
-                        }
+                        GameState.rumorTargetId = null;
+                        const response = DIALOGUES_DATA[target.species || target.id].rumorResponse;
                         GameState.pendingSheepDialogue = {
-                            speakerId: "sheep",
-                            listenerId: target.id,
-                            text: DIALOGUES_DATA.sheep.rumor_spread || "狼就要來了！你一定要相信我！"
+                            speakerId: "sheep", listenerId: target.id,
+                            pages: [...DIALOGUES_DATA.sheep.rumor_spread.pages,
+                                ...response.pages.map(page => page.replaceAll("{name}", target.name))]
                         };
-                        this.showToast(`羊向${target.name}說了假戰鬥故事，${target.name}陷入恐慌！`);
+                        this.recordStory(isCrow
+                            ? `${target.name}沒有相信黑鼻羊，請主人向烏鴉查問昨夜的泥坑。`
+                            : `黑鼻羊向${target.name}散播搏鬥故事；${target.name}相信了，慌張地往東門張望。`);
+                        this.showToast(isCrow ? `${target.name}拍著翅膀：先問問昨晚看見了什麼！` : `${target.name}相信了黑鼻羊的受傷故事！`);
                     }
                 }
             }
@@ -1716,8 +1829,9 @@
             ];
             const isRumorAvoidZone = (x, z) => rumorAvoidZones.some(zone => Math.hypot(x - zone.x, z - zone.z) < zone.radius);
             GameState.animals.forEach(a => {
-                if (a.status !== "dead" && a.id !== "sheep" && !a.isCarried) {
+                if (a.status !== "dead" && a.id !== "sheep" && !a.isCarried && a.id !== GameState.rumorTargetId) {
                     const species = a.species || a.id;
+                    if (GameState.defenseActive && ["cow","horse","cat","duck"].includes(species) && a.status === "normal") return;
                     if (species === "dog" && GameState.dogPatrolActive && a.status === "normal") {
                         const circuit = [
                             { x: -23, z: -3 }, { x: -19, z: 13 },
@@ -1735,7 +1849,7 @@
                             const destination = circuit[a.patrolIndex];
                             a.patrolPath = GameState.findPath(a.x, a.z, destination.x, destination.z, 0.5);
                         }
-                        let remaining = 2.4;
+                        let remaining = 4.8;
                         while (a.patrolPath?.length && remaining > 0.01) {
                             const next = a.patrolPath[0];
                             const length = Math.hypot(next.x - a.x, next.z - a.z);
@@ -1802,8 +1916,86 @@
             });
         },
 
+
+        hasSheepEvidence() {
+            return ["night_out", "duck_shadow", "crow_tracks", "mud_wool", "wolf_tracks"].every(flag => GameState.evidence[flag]);
+        },
+
+        stopProvenRumor() {
+            if (!this.hasSheepEvidence() && !GameState.evidence.sheep_truth) return;
+            GameState.rumorStarted = false;
+            GameState.rumorTargetId = null;
+            GameState.pendingSheepDialogue = null;
+        },
+
+        restoreTraps() {
+            GameState.traps.forEach(trap => {
+                if (trap.readyRound != null && GameState.round >= trap.readyRound) {
+                    trap.readyRound = null;
+                    const mesh = FarmWorld.trapMeshes[trap.id];
+                    if (mesh) mesh.visible = true;
+                    this.showToast("網夾完成三回合恢復，已可再次捕捉野狼。");
+                    this.recordStory("網夾經過三回合恢復，在原位重新啟用。");
+                }
+            });
+        },
+
+        inspectEvidence(id) {
+            const site = GameState.searchSites.find(site => site.id === id);
+            if (!site || !GameState.evidence.crow_tracks || GameState.evidence[id]) return false;
+            if (Math.hypot(site.x - GameState.player.x, site.z - GameState.player.z) > 2.8) return false;
+            GameState.evidence[id] = true;
+            this.stopProvenRumor();
+            GameState.searchTarget = null;
+            if (site.clue) {
+                GameState.discoveredClues[site.clue] = STORY_BRANCHES.clues[site.clue];
+                const clueRow = document.getElementById("clue-" + site.clue);
+                if (clueRow) { clueRow.innerText = STORY_BRANCHES.clues[site.clue]; clueRow.classList.add("found"); }
+            }
+            const marker = FarmWorld.scene.getObjectByName("Evidence_" + id);
+            if (marker) marker.visible = false;
+            const row = document.getElementById("evidence-" + id);
+            if (row) { row.innerText = site.text; row.classList.add("found"); }
+            this.recordStory(site.text, { type: "evidence", scene: "truth" });
+            this.showToast(site.text);
+            return true;
+        },
+
+        updateDefenseFormation() {
+            if (!GameState.defenseActive) return;
+            const home = GameState.farmhousePos;
+            const slots = { cow: {x: home.x - 4, z: home.z + 7}, horse: {x: home.x + 4, z: home.z + 7},
+                cat: {x: home.x - 8, z: home.z + 5}, duck: {x: home.x + 8, z: home.z + 5} };
+            GameState.animals.forEach(a => {
+                const slot = slots[a.species || a.id];
+                if (!slot || a.status !== "normal" || a.isCarried) return;
+                const path = GameState.findPath(a.x, a.z, slot.x, slot.z, 0.5);
+                let budget = 3;
+                for (const pt of path) {
+                    const distance = Math.hypot(pt.x-a.x, pt.z-a.z);
+                    const step = Math.min(budget, distance);
+                    if (distance > 0) { a.x += (pt.x-a.x)/distance*step; a.z += (pt.z-a.z)/distance*step; }
+                    budget -= step;
+                    if (budget <= 0) break;
+                }
+                const mesh = FarmWorld.animalMeshes[a.id];
+                // Face toward the farmhouse so the hind legs face outward.
+                if (mesh) { mesh.position.set(a.x,0,a.z); mesh.rotation.y = Math.atan2(home.x-a.x,home.z-a.z); }
+            });
+        },
+
+        wolfRoute(w, target) {
+            const original = GameState.canMoveTo;
+            GameState.canMoveTo = function(x,z,radius) {
+                return original.call(this,x,z,radius) && !GameState.avoidedRoutes.some(route =>
+                    Math.hypot(x-route.x,z-route.z) < 4);
+            };
+            try { return GameState.findPath(w.x,w.z,target.x,target.z,0.4); }
+            finally { GameState.canMoveTo = original; }
+        },
+
         spawnNightWolves() {
-            const wolfCount = GameState.round >= 10 ? 5 : 4;
+            const wolfCount = Math.max(0, 4 - GameState.wolves.filter(w => w.captured && !w.isDead).length);
             const cluePoints = {
                 north: { x: 0, z: -19, dir: "北方臭水溝" },
                 west: { x: -19, z: 2, dir: "西方木門" },
@@ -1811,7 +2003,7 @@
                 south: { x: -3, z: 18, dir: "南方廢果園" }
             };
             const knownKeys = Object.keys(GameState.discoveredClues)
-                .filter(key => cluePoints[key]);
+                .filter(key => cluePoints[key] && !GameState.avoidedRoutes.some(route => route.key === key));
             const hasClue = knownKeys.length > 0;
             const randomEdgePoint = () => {
                 const edge = Math.floor(Math.random() * 4);
@@ -1830,9 +2022,17 @@
             }
 
             Array.from({ length: wolfCount }, (_, idx) => {
-                const base = hasClue
+                let base = hasClue
                     ? cluePoints[knownKeys[idx % knownKeys.length]]
                     : randomEdgePoint();
+                // After a rescue the pack abandons that entrance and takes an outer detour.
+                if (GameState.avoidedRoutes.length) {
+                    const alternatives = [
+                        {x:-29,z:-25,dir:"西北外圍"}, {x:29,z:-25,dir:"東北外圍"},
+                        {x:29,z:26,dir:"東南外圍"}, {x:-29,z:26,dir:"西南外圍"}
+                    ].filter(point => !GameState.avoidedRoutes.some(route => Math.hypot(point.x-route.x,point.z-route.z)<6));
+                    base = alternatives[idx % alternatives.length] || randomEdgePoint();
+                }
                 const pt = {
                     x: base.x + (hasClue ? (Math.random() - 0.5) * 2.6 : 0),
                     z: base.z + (hasClue ? (Math.random() - 0.5) * 2.6 : 0),
@@ -1849,7 +2049,9 @@
                     z: pt.z,
                     targetId: target ? target.id : null,
                     isDead: false,
-                    captured: false
+                    captured: false,
+                    entryKey: hasClue && !GameState.avoidedRoutes.length ? knownKeys[idx % knownKeys.length] : base.dir,
+                    entryPoint: { x: base.x, z: base.z }
                 };
                 GameState.wolves.push(wolfObj);
                 FarmWorld.spawnWolf(wolfId, pt.x, pt.z);
@@ -1857,6 +2059,7 @@
         },
 
         nightAI() {
+            this.updateDefenseFormation();
             // At night the whole farm gathers near the red farmhouse for safety.
             const shelterSpots = [
                 { x: -9.5, z: 1.5 }, { x: -7.8, z: 2.3 },
@@ -1866,6 +2069,8 @@
             GameState.animals.forEach((a, index) => {
                 if (a.status === "dead") return;
                 if (a.isCarried) return;
+                if (GameState.defenseActive && ["cow","horse","cat","duck"].includes(a.species || a.id) && a.status === "normal") return;
+                if ((a.species || a.id) === "dog" && GameState.dogPatrolActive && a.status === "normal") return;
                 a.isFlying = false;
                 const shelter = shelterSpots[index % shelterSpots.length];
                 const dx = shelter.x - a.x;
@@ -1890,7 +2095,37 @@
             });
 
             GameState.wolves.forEach(w => {
-                if (w.isDead || w.captured || w.retreating || w.attacking) return;
+                if (GameState.gameOver || w.isDead || w.captured || w.retreating || w.attacking) return;
+
+
+                if (GameState.defenseActive) {
+                    const sentry = GameState.animals.find(a => ["cat","duck"].includes(a.species || a.id) &&
+                        a.status === "normal" && !a.isCarried && Math.hypot(a.x-w.x,a.z-w.z)<15);
+                    const defender = GameState.animals.find(a => ["cow","horse"].includes(a.species || a.id) &&
+                        a.status === "normal" && !a.isCarried && Math.hypot(a.x-w.x,a.z-w.z)<(sentry ? 6 : 3));
+                    if (sentry && !w.warned) {
+                        w.warned = true;
+                        this.recordStory(sentry.name+"發出警戒聲，提醒馬與牛注意野狼！");
+                        this.showToast(sentry.name+"發現野狼！馬與牛準備踢擊！");
+                    }
+                    if (defender) {
+                        w.health = (w.health ?? 2)-1;
+                        const mesh = FarmWorld.animalMeshes[defender.id];
+                        if (mesh) {
+                            mesh.rotation.y = Math.atan2(defender.x-w.x,defender.z-w.z);
+                            mesh.rotation.x = -0.35;
+                            setTimeout(() => { mesh.rotation.x = 0; }, 350);
+                        }
+                        this.recordStory(defender.name+"用後腿踢中野狼，野狼"+(w.health<=0 ? "倒下了。" : "受傷了。"));
+                        if (w.health <= 0) {
+                            w.isDead = true;
+                            GameState.wolvesKilled++;
+                            FarmWorld.removeWolf(w.id);
+                            this.checkVictoryOrDefeat();
+                        }
+                        return;
+                    }
+                }
 
                 if (GameState.crowGuardActive && GameState.crowGuardUsedRound !== GameState.round) {
                     const crow = GameState.animals.find(a => (a.species || a.id) === "crow" && a.status === "normal" &&
@@ -1902,8 +2137,8 @@
                         w.retreating = true;
                         w.retreatTarget = { x: w.x < 0 ? -39 : 39, z: w.z < 0 ? -35 : 35 };
                         SoundAudio.playWolfRetreat();
-                        this.recordStory(`第 ${GameState.round} 回合：${crow.name} 從空中俯衝，與野狼單挑並把牠逼退。`);
-                        this.showToast(`${crow.name} 俯衝找野狼單挑，逼退了一頭狼！`);
+                        this.recordStory(`第 ${GameState.round} 回合：${crow.name} 從空中俯衝，在狼爪碰到前振翅飛起，嘎嘎笑著把野狼引離同伴。`);
+                        this.showToast(`${crow.name} 俯衝挑戰野狼又飛回高處：「你不會飛，抓不到我！」`);
                         return;
                     }
                 }
@@ -1917,13 +2152,23 @@
                     const rescueTrap = GameState.traps.find(t => t.capturedWolfId === rescueTarget.id);
                     if (rescueTrap) {
                         rescueTarget.captured = false;
+                        rescueTarget.capturing = false;
+                        const entry = rescueTarget.entryPoint || {x:rescueTrap.x,z:rescueTrap.z};
+                        GameState.avoidedRoutes.push({key:rescueTarget.entryKey,x:entry.x,z:entry.z});
+                        GameState.avoidedRoutes.push({key:"trap:"+rescueTrap.id,x:rescueTrap.x,z:rescueTrap.z});
+                        rescueTrap.capturedWolfId = null;
+                        rescueTrap.readyRound = GameState.round + 3;
+                        [w,rescueTarget].forEach(wolf => {
+                            wolf.moveTo = null;
+                            wolf.detour = {x: wolf.x < GameState.farmhousePos.x ? -27 : 27, z: 25};
+                        });
                         rescueTarget.x = w.x - 0.8;
                         rescueTarget.z = w.z - 0.3;
                         FarmWorld.releaseWolfFromNet(rescueTrap.id, rescueTarget.id);
-                        FarmWorld.removeTrap(rescueTrap.id);
-                        GameState.traps = GameState.traps.filter(t => t.id !== rescueTrap.id);
+                        if (FarmWorld.trapMeshes[rescueTrap.id]) FarmWorld.trapMeshes[rescueTrap.id].visible = false;
                         this.recordStory(`第 ${GameState.round} 回合：另一頭野狼撕開網子，救走了被捕的同伴。`);
-                        this.showToast("野狼同伴趕來救援，網子被扯破了！");
+                        this.showToast("野狼同伴趕來救援，網子被扯破，三回合後恢復！狼群會記住入口並繞道。");
+                        return;
                     }
                 }
 
@@ -1938,7 +2183,7 @@
                     const dogDz = w.z - guardDog.z;
                     const dogDist = Math.max(0.01, Math.hypot(dogDx, dogDz));
                     if (dogDist > 2.0) {
-                        const dogStep = Math.min(GameState.dogPatrolActive ? 4.2 : 2.8, dogDist - 1.7);
+                        const dogStep = Math.min(GameState.dogPatrolActive ? 5.6 : 2.8, dogDist - 1.7);
                         const dogX = guardDog.x + (dogDx / dogDist) * dogStep;
                         const dogZ = guardDog.z + (dogDz / dogDist) * dogStep;
                         if (GameState.canMoveTo(dogX, dogZ, 0.5)) {
@@ -1988,19 +2233,33 @@
 
                 // Move towards target animal or red farmhouse
                 let targetPos = GameState.farmhousePos;
+                if (!GameState.getAnimal(w.targetId) || GameState.getAnimal(w.targetId).status === "dead") {
+                    w.targetId = GameState.animals.find(a=>a.status !== "dead" && !a.isCarried)?.id;
+                }
                 const targetAnimal = GameState.getAnimal(w.targetId);
                 if (targetAnimal && targetAnimal.status !== "dead") {
                     targetPos = { x: targetAnimal.x, z: targetAnimal.z };
                 }
 
+                const packmate = GameState.wolves.find(other => other.id !== w.id && other.captured && !other.isDead);
+                if (packmate) targetPos = {x:packmate.x,z:packmate.z};
+                else if (w.detour) {
+                    if (Math.hypot(w.x-w.detour.x,w.z-w.detour.z)<2) w.detour = null;
+                    else targetPos = w.detour;
+                }
+                if (GameState.avoidedRoutes.length && !packmate) {
+                    const route = this.wolfRoute(w,targetPos);
+                    if (route.length) targetPos = route.find(p=>Math.hypot(p.x-w.x,p.z-w.z)>0.6) || route[0];
+                    else return;
+                }
                 const dx = targetPos.x - w.x;
                 const dz = targetPos.z - w.z;
                 const dist = Math.sqrt(dx*dx + dz*dz);
 
                 const previousX = w.x, previousZ = w.z;
-                if (dist > 1.0) {
+                if (dist > 0.05) {
                     // Wolves sprint at night; traps and guard dogs are the intended counters.
-                    const wolfSpeed = 2.35;
+                    const wolfSpeed = Math.min(2.35, dist);
                     const stepX = (dx / dist) * wolfSpeed;
                     const stepZ = (dz / dist) * wolfSpeed;
                     // Check collision with obstacles for wolves
@@ -2024,7 +2283,7 @@
                 // Test the whole running segment: a fast wolf can leap over a trap
                 // between the one-second AI updates.
                 GameState.traps.forEach(trap => {
-                    if (trap.capturedWolfId || w.captured || w.capturing) return;
+                    if (trap.readyRound != null || trap.capturedWolfId || w.captured || w.capturing) return;
                     const segmentX = w.x - previousX, segmentZ = w.z - previousZ;
                     const lengthSquared = segmentX * segmentX + segmentZ * segmentZ;
                     const fraction = lengthSquared > 0
@@ -2205,8 +2464,18 @@
                 const art = document.createElement("div");
                 art.className = "storybook-art";
                 const image = document.createElement("img");
-                image.src = "../assets/storybook-background.webp";
-                image.alt = `動物農場繪本底圖：${frame.title}`;
+                const sceneImages = {
+                    day: "../assets/storybook/day.webp",
+                    dialogue: "../assets/storybook/day.webp",
+                    truth: "../assets/storybook/truth.webp",
+                    defense: "../assets/storybook/truth.webp",
+                    night: "../assets/storybook/night.webp",
+                    trap: "../assets/storybook/trap.webp",
+                    rescue: "../assets/storybook/rescue.webp",
+                    ending: "../assets/storybook/ending.webp"
+                };
+                image.src = sceneImages[frame.scene] || sceneImages.day;
+                image.alt = `動物農場繪本場景：${frame.title}`;
                 art.appendChild(image);
                 const number = document.createElement("span");
                 number.className = "storybook-page-number";
@@ -2231,6 +2500,21 @@
             });
         },
 
+        endForTeacher() {
+            if (GameState.gameOver) return;
+            GameState.gameOver = true;
+            clearInterval(this.tickInterval);
+            GameState.player.destination = null;
+            GameState.player.path = [];
+            GameState.player.guidedTargetId = null;
+            GameState.searchTarget = null;
+            GameState.pendingSheepDialogue = null;
+            document.body.classList.remove("dialogue-open");
+            document.getElementById("dialogue-panel").classList.add("hidden");
+            this.recordStory("老師結束了這次巡守，大家一起回顧已經發現的證據與合作經過。", {type:"ending",scene:"ending"});
+            this.showEndModal(false, "teacher");
+        },
+
         showEndModal(isWin, ending = "wolves") {
             const modal = document.getElementById("modal-endgame");
             const title = document.getElementById("modal-title");
@@ -2240,24 +2524,33 @@
             const printButton = document.getElementById("btn-print-storybook");
             modal.classList.remove("hidden");
 
-            this.recordStory(isWin ? "農場迎來新的早晨，大家把這段巡守記成了一本繪本。" : "迷霧籠罩農場，這段失守的夜晚也被記進了繪本。", { type: "ending", scene: "ending", title: isWin ? "平安迎來黎明" : "迷霧中的結局" });
+            if (ending !== "teacher") this.recordStory(isWin ? "農場迎來新的早晨，大家把這段巡守記成了一本繪本。" : "迷霧籠罩農場，這段失守的夜晚也被記進了繪本。", { type: "ending", scene: "ending", title: isWin ? "平安迎來黎明" : "迷霧中的結局" });
             const clueCount = Object.keys(GameState.discoveredClues).length;
             const evidenceCount = Object.keys(GameState.evidence).length;
             const trapsUsed = 5 - GameState.trapInventory;
+            const story = GameState.storyLog.slice(-18).join("\n");
             summary.innerHTML = `
                 <div class="end-summary-card"><strong>${GameState.round}</strong><span>完成回合</span></div>
                 <div class="end-summary-card"><strong>${GameState.wolvesKilled}</strong><span>捕捉狼隻</span></div>
                 <div class="end-summary-card"><strong>${clueCount}</strong><span>查明入口</span></div>
                 <div class="end-summary-card"><strong>${evidenceCount}</strong><span>取得證據</span></div>`;
             learningNote.innerText = "評量觀察：孩子是否能從對談找出證據、分辨謠言與事實、安排有限網夾，並在兩回合內照顧受傷動物。";
-            if (isWin && ending === "rounds") {
-                title.innerText = "十回合的和平農場：全員無傷！";
+            if (ending === "teacher") {
+                title.innerText = "本次巡守結束";
+                title.className = "text-2xl font-black mb-3 text-amber-400";
+                desc.innerText = `老師已提前結束遊戲。第 ${GameState.round}／${GameState.maxRounds} 回合，制伏 ${GameState.wolvesKilled} 頭野狼，找到 ${evidenceCount} 項證據。故事歷程已整理成繪本頁。`;
+            } else if (isWin && ending === "rounds") {
+                title.innerText = `${GameState.maxRounds}回合的和平農場：全員無傷！`;
                 title.className = "text-2xl font-black mb-3 text-emerald-400";
-                desc.innerText = `你讓主人與動物們平安度過十個日夜，沒有任何動物死傷。已使用 ${trapsUsed} 個網夾。故事歷程已整理成繪本頁。`;
+                desc.innerText = `你讓主人與動物們平安度過 ${GameState.maxRounds} 個日夜，沒有任何動物死傷。已使用 ${trapsUsed} 個網夾。故事歷程已整理成繪本頁。`;
             } else if (isWin) {
                 title.innerText = "大獲全勝：四頭野狼終於被制伏！";
                 title.className = "text-2xl font-black mb-3 text-emerald-400";
                 desc.innerText = `你冷靜辨別了羊的吹牛與謊言，並用網子與守備讓四頭野狼失去戰力。已使用 ${trapsUsed} 個網夾。故事歷程已整理成繪本頁。`;
+            } else if (ending === "rounds") {
+                title.innerText = `${GameState.maxRounds}回合巡守結束：還有夥伴需要照顧`;
+                title.className = "text-2xl font-black mb-3 text-amber-400";
+                desc.innerText = `${GameState.maxRounds} 個日夜已經結束，農場犧牲了 ${GameState.animalsDead} 隻動物，還有 ${GameState.animals.filter(a => a.status === "injured").length} 隻等待治療。故事歷程已整理成繪本頁。`;
             } else {
                 title.innerText = "最惡結局：農場在狼群陰影下淪陷";
                 title.className = "text-2xl font-black mb-3 text-rose-500";
@@ -2307,7 +2600,7 @@
             injuredEl.innerText = `${injuredCount} 隻`;
             panicEl.innerText = `${panicCount} 隻`;
 
-            trapEl.innerText = `剩餘：${GameState.trapInventory} 個`;
+            trapEl.innerText = `庫存：${GameState.trapInventory}／5 個；恢復中：${GameState.traps.filter(t=>t.readyRound!=null).map(t=>Math.max(0,t.readyRound-GameState.round)+"回合").join("、") || "無"}`;
             if (roundEl) roundEl.innerText = `${GameState.round} / ${GameState.maxRounds}`;
         }
     };
@@ -2341,6 +2634,11 @@
         const injuredListItems = document.getElementById("injured-list-items");
         const clueBoard = document.getElementById("clue-board");
         const mobileDataToggle = document.getElementById("mobile-data-toggle");
+        document.getElementById("btn-end-game").addEventListener("click", () => GameEngine.endForTeacher());
+        document.getElementById("btn-end-dialogue-game").addEventListener("click", () => GameEngine.endForTeacher());
+        document.body.appendChild(dialoguePanel);
+        dialoguePanel.setAttribute("role","dialog");
+        dialoguePanel.setAttribute("aria-labelledby","dialogue-name");
         const clueSheep = document.getElementById("clue-sheep");
         const evidenceElements = {
             night_out: document.getElementById("clue-night-out"),
@@ -2358,16 +2656,34 @@
         function applyDialogueGrants(entry) {
             for (const grant of entry.grants || []) {
                 if (STORY_BRANCHES.clues[grant]) {
-                    GameState.discoveredClues[grant] = STORY_BRANCHES.clues[grant];
-                    clueElements[grant].innerText = STORY_BRANCHES.clues[grant];
-                    clueElements[grant].classList.add("found");
+                    if (!GameState.discoveredClues[grant]) {
+                        clueElements[grant].innerText = "待現場查證："+STORY_BRANCHES.clues[grant];
+                    }
                 } else if (STORY_BRANCHES.evidence[grant]) {
                     GameState.evidence[grant] = true;
-                    evidenceElements[grant].innerText = STORY_BRANCHES.evidence[grant];
-                    evidenceElements[grant].classList.add("found");
+                    if (grant === "crow_tracks") GameState.sheepSuspected = true;
+                    if (grant === "sheep_truth") {
+                        GameState.rumorStarted = false;
+                        GameState.rumorTargetId = null;
+                        GameState.pendingSheepDialogue = null;
+                        GameState.animals.forEach(a => {
+                            if (a.rumorPanicked && a.status === "panicked") a.status = "normal";
+                            a.rumorPanicked = false;
+                        });
+                        GameEngine.showToast("黑鼻羊說出真相。大家鬆了一口氣，決定一起查證真正的狼蹤。");
+                    }
+                    if (evidenceElements[grant]) {
+                        evidenceElements[grant].innerText = STORY_BRANCHES.evidence[grant];
+                        evidenceElements[grant].classList.add("found");
+                    }
+                    if (grant === "crow_tracks") unlockSearch();
                 } else if (grant === "dog_patrol") {
                     GameState.dogPatrolActive = true;
                     GameEngine.showToast("托托開始加速巡邏莊園；夜裡會主動追趕野狼！");
+                } else if (grant === "cooperative_defense") {
+                    GameState.defenseActive = true;
+                    GameEngine.updateDefenseFormation();
+                    GameEngine.showToast("牛接受貝克的道歉，與馬組成踢擊防線；貓和鴨子開始警戒！");
                 } else if (grant === "crow_guard") {
                     GameState.crowGuardActive = true;
                 }
@@ -2375,8 +2691,41 @@
             clueBoard.classList.remove("hidden");
         }
 
+
+        function unlockSearch() {
+            if (document.getElementById("search-sites")) return;
+            const panel = document.createElement("div");
+            panel.id = "search-sites";
+            panel.innerText = "烏鴉的證詞還要物證核對：點選搜索點，親自到現場採證。";
+            GameState.searchSites.forEach(site => {
+                const row = document.createElement("div");
+                row.className = "clue-row";
+                row.id = "evidence-" + site.id;
+                const button = document.createElement("button");
+                button.innerText = "🔍 搜索：" + site.label;
+                button.style.cssText = "padding:10px;min-height:44px;color:#fef3c7;pointer-events:auto";
+                button.onclick = () => {
+                    setPlayerDestination({x:site.x,z:site.z});
+                    GameState.searchTarget = site.id;
+                    document.getElementById("ui-layer").classList.remove("mobile-data-open");
+
+                };
+                row.appendChild(button);
+                panel.appendChild(row);
+                const marker = new THREE.Mesh(new THREE.BoxGeometry(.8,1.2,.8),new THREE.MeshBasicMaterial({color:0xffd54f}));
+                marker.position.set(site.x,1.1,site.z);
+                marker.name = "Evidence_" + site.id;
+                FarmWorld.scene.add(marker);
+            });
+            clueBoard.appendChild(panel);
+        }
+
         function nextBranchDialogue(species) {
             const lines = STORY_BRANCHES.conversations[species] || [];
+            if (species === "sheep") {
+                if (GameState.evidence.sheep_truth) return null;
+                if (GameEngine.hasSheepEvidence()) return lines.find(line => line.id === "sheep-confession") || null;
+            }
             const available = lines.filter(line =>
                 (line.requires || []).every(flag => GameState.evidence[flag]));
             return available.find(line => !GameState.conversationSeen[line.id]) || null;
@@ -2385,12 +2734,8 @@
         function setPlayerDestination(destination, guidedTargetId = null, forceRepath = true) {
             const player = GameState.player;
             player.guidedTargetId = guidedTargetId;
-            player.destination = destination;
-            if (forceRepath || !player.path.length) {
-                player.path = GameState.findPath(player.x, player.z, destination.x, destination.z, 0.45);
-                player.pathGoal = { x: destination.x, z: destination.z };
-            }
-            player.destination = player.path.length ? player.path.shift() : destination;
+            if (forceRepath || !player.destination) GameState.planPlayerRoute(destination);
+            closeDialogue();
         }
 
         function beginAutoRescue(animal) {
@@ -2455,7 +2800,7 @@
         mobileDataToggle.addEventListener("click", () => {
             const isOpen = document.getElementById("ui-layer").classList.toggle("mobile-data-open");
             mobileDataToggle.setAttribute("aria-expanded", String(isOpen));
-            mobileDataToggle.innerText = isOpen ? "▣ 收起資料夾" : "▣ 資料夾";
+            mobileDataToggle.innerText = isOpen ? "▣ 收起線索" : "▣ 線索與證據";
             SoundAudio.playPop();
         });
 
@@ -2481,13 +2826,26 @@
             SoundAudio.playPop();
         });
 
-        // Close dialogue
+        let activeReading = null;
+        // Closing early preserves unseen branches; finishing the last page grants evidence.
         const closeDialogue = () => {
             dialoguePanel.classList.add("hidden");
+            document.body.classList.remove("dialogue-open");
+            activeReading = null;
             GameState.selectedAnimalId = null;
             SoundAudio.playPop();
         };
-        btnDialogueOk.addEventListener("click", closeDialogue);
+        btnDialogueOk.addEventListener("click", () => {
+            if (activeReading && activeReading.index < activeReading.pages.length - 1) {
+                activeReading.index++;
+                renderReadingPage();
+            } else {
+                const next = getNextVisit();
+                finishReading();
+                if (next) followNextVisit(next);
+                else closeDialogue();
+            }
+        });
         btnCloseDialogue.addEventListener("click", closeDialogue);
 
         // Resolve a next-character pointer from either a dialogue record or its parent JSON record.
@@ -2510,9 +2868,39 @@
         function makeDialogueEntry(value) {
             if (typeof value === "string") return { text: value };
             if (value && typeof value === "object") {
-                return { ...value, text: value.text || value.content || value.dialogue || "……" };
+                return { ...value, text: value.pages?.[0] || value.text || value.content || value.dialogue || "……" };
             }
             return { text: "……" };
+        }
+
+        function renderReadingPage() {
+            const reading = activeReading;
+            dialogueContent.innerText = reading.pages[reading.index];
+            const next = getNextVisit();
+            btnDialogueOk.innerText = reading.index < reading.pages.length - 1 ? "翻下一頁 →" : (next ? "讀完，"+next.label+" →" : "讀完 ✓");
+            dialogueHint.innerText = `第 ${reading.index + 1}／${reading.pages.length} 頁`;
+            dialogueNextGuide.classList.add("hidden");
+            if (reading.index === reading.pages.length - 1) showNextCharacterGuide();
+        }
+
+        function finishReading() {
+            if (!activeReading || activeReading.completed || activeReading.index !== activeReading.pages.length - 1) return;
+            const reading = activeReading;
+            reading.completed = true;
+            const entry = reading.entry;
+            if (!reading.scripted) {
+                if (entry.id) GameState.conversationSeen[entry.id] = true;
+                applyDialogueGrants(entry);
+                if ((reading.animal.species || reading.animal.id) === "dog") GameState.dogPatrolActive = true;
+                if (reading.animal.id === "sheep" && !GameState.evidence.sheep_truth && !GameEngine.hasSheepEvidence() && !GameState.rumorStarted && entry.id === "sheep-claim") {
+                    GameState.rumorStarted = true;
+                    GameEngine.showToast("黑鼻羊一拐一拐地走向同伴，開始講述牠的『英勇故事』……");
+                }
+            }
+            GameEngine.recordStory(`${reading.data.name || reading.animal.name}的故事：${reading.pages.join(" ")}`, {
+                type: "dialogue", scene: entry.route || "dialogue",
+                title: entry.route === "truth" ? "泥坑裡的秘密" : "農場裡的故事"
+            });
         }
 
         function directionFromPlayer(target) {
@@ -2523,26 +2911,44 @@
             return (vertical + horizontal) || "附近";
         }
 
-        function showNextCharacterGuide(pointer) {
-            const target = resolveNextCharacter(pointer);
-            if (!target || target.status === "dead") {
-                dialogueNextGuide.classList.add("hidden");
-                GameState.nextGuideTargetId = null;
-                return;
+
+        function getNextVisit() {
+            if (!activeReading) return null;
+            const reading = activeReading;
+            if (reading.entry.id === "crow-tracks") {
+                const site = GameState.searchSites.find(s=>["mud_wool","wolf_tracks"].includes(s.id) && !GameState.evidence[s.id]);
+                if (site) return {site, label:"搜索"+site.label};
             }
-            const distance = Math.max(1, Math.round(Math.hypot(target.x - GameState.player.x, target.z - GameState.player.z)));
-            dialogueNextTitle.innerText = `下一段對談：請尋找「${target.name}」`;
-            dialogueNextDetail.innerText = `位置在你的${directionFromPlayer(target)}方，約 ${distance} 格外。牠會自己在農場中移動，抵達附近後點擊牠即可繼續故事。`;
-            dialogueNextGuide.classList.remove("hidden");
-            GameState.nextGuideTargetId = target.id;
+            const target = resolveNextCharacter(readNextPointer(reading.entry) || readNextPointer(reading.data));
+            if (!target || target.status === "dead") return null;
+            return {target,label:"拜訪"+target.name};
+        }
+
+        function showNextCharacterGuide() {
+            const next = getNextVisit();
+            dialogueNextGuide.classList.toggle("hidden",!next);
+            GameState.nextGuideTargetId = next?.target?.id || null;
+            if (!next) return;
+            dialogueNextTitle.innerText = "接下來："+next.label;
+            dialogueNextDetail.innerText = "";
+            btnFollowNext.innerText = "讀完並"+next.label+" →";
+        }
+
+        function followNextVisit(next) {
+            if (next.site) {
+                setPlayerDestination({x:next.site.x,z:next.site.z});
+                GameState.searchTarget = next.site.id;
+            } else if (next.target) {
+                setPlayerDestination({x:next.target.x,z:next.target.z},next.target.id);
+            }
+            closeDialogue();
         }
 
         btnFollowNext.addEventListener("click", () => {
-            const target = GameState.getAnimal(GameState.nextGuideTargetId);
-            if (!target || target.status === "dead") return;
-            setPlayerDestination({ x: target.x, z: target.z }, target.id);
-            GameEngine.showToast(`已自動引導前往${target.name}，角色會持續追蹤並避開障礙物。`);
-            closeDialogue();
+            const next = getNextVisit();
+            if (!next) return;
+            finishReading();
+            followNextVisit(next);
         });
 
         // Soothe / Calm Down animal (Eliminate panic from sheep's rumor)
@@ -2591,6 +2997,10 @@
 
         // Display dialogue box for animal
         function openDialogueForAnimal(animal, justRescued = false, scriptedEntry = null) {
+            if (animal.id === "sheep" && (GameEngine.hasSheepEvidence() || GameState.evidence.sheep_truth)) {
+                GameEngine.stopProvenRumor();
+                scriptedEntry = null;
+            }
             const species = animal.species || animal.id;
             const data = DIALOGUES_DATA[species] || {
                 name: animal.name,
@@ -2598,6 +3008,10 @@
                 injured: "我受傷了……請把我帶回紅農舍。",
                 post_rescue: "謝謝你救了我！我會和大家一起待在農舍附近。"
             };
+            document.body.classList.add("dialogue-open");
+            document.getElementById("ui-layer").classList.remove("mobile-data-open");
+            mobileDataToggle.setAttribute("aria-expanded","false");
+            mobileDataToggle.innerText = "▣ 線索與證據";
             GameState.selectedAnimalId = animal.id;
             dialogueName.innerText = scriptedEntry && scriptedEntry.listenerName
                 ? `黑鼻羊・貝克 → ${scriptedEntry.listenerName}`
@@ -2650,26 +3064,25 @@
                 dialogueTag.className = "text-xs px-2 py-0.5 rounded bg-sky-950 text-sky-200 border border-sky-700";
                 const followups = species === "sheep" && GameState.evidence.sheep_truth
                     ? (data.afterTruth || data.normal)
-                    : (GameState.sheepSuspected && data.suspicious ? data.suspicious : data.normal);
+                    : (GameState.evidence.sheep_truth && data.afterTruth ? data.afterTruth : (GameState.sheepSuspected && data.suspicious ? data.suspicious : data.normal));
                 const fallbackLines = Array.isArray(followups) && followups.length ? followups : ["今天農場陽光真好。"];
                 const count = GameState.conversationCount[species] || 0;
                 if (!branchLine) GameState.conversationCount[species] = count + 1;
                 selectedEntry = makeDialogueEntry(branchLine || fallbackLines[count % fallbackLines.length]);
                 dialogueContent.innerText = selectedEntry.text;
                 dialogueHint.innerText = branchLine?.route === "truth"
-                    ? "比對昨夜行蹤、池塘怪影與空中的足跡，再找黑鼻羊對質。"
-                    : "查證入口後可放置網夾；五個網夾壞了無法修復。";
-                if (branchLine) GameState.conversationSeen[branchLine.id] = true;
+                    ? "讀完烏鴉證詞後，親自搜索泥池羊毛與另一段路的狼爪印，再找黑鼻羊對質。"
+                    : "網夾共五個；破網後三回合恢復。受困的狼須等同伴救援才會脫困。";
+
             }
 
-            showNextCharacterGuide(readNextPointer(selectedEntry) || readNextPointer(data));
-            if (selectedEntry && !scriptedEntry) applyDialogueGrants(selectedEntry);
-
-            GameEngine.recordStory(`${data.name || animal.name}對主人說：「${dialogueContent.innerText}」`, {
-                type: "dialogue",
-                scene: selectedEntry?.route === "truth" ? "truth" : (selectedEntry?.route === "defense" ? "defense" : "dialogue"),
-                title: selectedEntry?.route === "truth" ? "查出黑鼻羊的謊言" : (selectedEntry?.route === "defense" ? "農場防線" : "農場裡的線索")
-            });
+            const entry = selectedEntry || {text: dialogueContent.innerText};
+            activeReading = {
+                animal, data, entry, scripted: !!scriptedEntry, index: 0,
+                pages: entry.pages?.length ? entry.pages : [entry.text],
+                hint: dialogueHint.innerText
+            };
+            renderReadingPage();
             dialoguePanel.classList.remove("hidden");
             SoundAudio.playPop();
         }
@@ -2677,7 +3090,7 @@
         // Raycasting for user clicks
         window.addEventListener("pointerdown", (event) => {
             // Check if clicking inside UI elements
-            if (event.target.closest("#ui-layer") || event.target.closest("#modal-endgame")) return;
+            if (event.target.closest("#ui-layer, #dialogue-panel, #modal-endgame")) return;
 
             FarmWorld.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             FarmWorld.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -2696,9 +3109,16 @@
                 };
                 // Trees and roof pieces can sit in front of a small bird. Prefer
                 // the animal hit so an intentionally clicked character responds.
+                const evidenceHit = intersects.find(item=>item.object.name?.startsWith("Evidence_"));
+                if (evidenceHit && !GameState.isPlacingTrap) {
+                    const id = evidenceHit.object.name.slice(9);
+                    const site = GameState.searchSites.find(s=>s.id===id);
+                    if (site && GameState.evidence.crow_tracks) { setPlayerDestination(site); GameState.searchTarget = id; }
+                    return;
+                }
                 const hit = GameState.isPlacingTrap
                     ? (intersects.find(item => item.object.name === "Ground") || intersects[0])
-                    : (intersects.find(isAnimalHit) || intersects[0]);
+                    : (intersects.find(isAnimalHit) || intersects.find(item => item.object.name === "Ground" || item.object.parent?.name === "Ground") || intersects[0]);
                 const hitObj = hit.object;
 
                 // Check distance to player
@@ -2759,7 +3179,7 @@
                             beginAutoRescue(animal);
                         } else if (distToAnimal > 2.8) {
                             setPlayerDestination({ x: animal.x, z: animal.z }, animal.id);
-                            GameEngine.showToast(`正在自動前往${animal.name}，抵達後會自動開始對談。`);
+
                         } else {
                             openDialogueForAnimal(animal);
                         }
@@ -2770,14 +3190,16 @@
                         x: Math.max(-32, Math.min(32, hit.point.x)),
                         z: Math.max(-32, Math.min(32, hit.point.z))
                     };
-                    if (GameState.canMoveTo(destination.x, destination.z, 0.45)) {
-                        GameState.player.guidedTargetId = null;
+                    GameState.searchTarget = null;
+                    GameState.player.guidedTargetId = null;
+                    // A new ground command overrides a rescue approach. If carrying, the
+                    // rescue remains active so the animal is still safely delivered.
+                    if (!GameState.player.carryingAnimalId) {
                         GameState.player.autoRescueTargetId = null;
                         GameState.player.autoRescuePhase = null;
-                        setPlayerDestination(destination, null);
-                    } else {
-                        GameEngine.showToast("這個位置有障礙物，請點擊附近的空地！");
                     }
+                    setPlayerDestination(destination, null);
+
                 }
             }
         });
@@ -2789,6 +3211,15 @@
             const now = performance.now();
             const delta = Math.min((now - lastTime) / 1000, 0.1);
             lastTime = now;
+            if (!dialoguePanel.classList.contains("hidden")) {
+                FarmWorld.controls.update();
+                FarmWorld.renderer.render(FarmWorld.scene, FarmWorld.camera);
+                return;
+            }
+            if (!GameState.gameOver && GameState.searchTarget) GameEngine.inspectEvidence(GameState.searchTarget);
+            const visitTarget = GameState.getAnimal(GameState.player.guidedTargetId);
+            const searchSite = GameState.searchSites.find(s=>s.id===GameState.searchTarget);
+            document.getElementById("visit-status").innerText = visitTarget ? "正在拜訪："+visitTarget.name : (searchSite ? "正在搜索："+searchSite.label : "");
             clock += delta * 3.5;
             GameEngine.updateRetreatingWolves(delta);
             GameState.wolves.forEach(w => {
@@ -2817,22 +3248,20 @@
             });
 
             // Sheep initiates an on-field rumor conversation with the animal it approached.
-            if (GameState.pendingSheepDialogue && dialoguePanel.classList.contains("hidden")) {
+            if (GameState.pendingSheepDialogue && !GameState.player.destination && !GameState.player.guidedTargetId && !GameState.player.autoRescueTargetId && dialoguePanel.classList.contains("hidden")) {
                 const sheepConversation = GameState.pendingSheepDialogue;
                 GameState.pendingSheepDialogue = null;
                 const sheep = GameState.getAnimal(sheepConversation.speakerId);
                 if (sheep && sheep.status !== "dead") {
                     openDialogueForAnimal(sheep, false, {
                         listenerName: GameState.getAnimal(sheepConversation.listenerId)?.name || "同伴",
-                        text: sheepConversation.text
+                        pages: sheepConversation.pages
                     });
+                    return;
                 }
             }
 
             // 1. Player Movement & Collision Resolution
-            let moveX = 0;
-            let moveZ = 0;
-            let destination = GameState.player.destination;
             const autoRescueTarget = GameState.player.autoRescueTargetId
                 ? GameState.getAnimal(GameState.player.autoRescueTargetId)
                 : null;
@@ -2897,73 +3326,10 @@
                 GameState.player.guidedTargetId = null;
                 GameState.player.destination = null;
             }
-            destination = GameState.player.destination;
-            if (destination) {
-                moveX = destination.x - GameState.player.x;
-                moveZ = destination.z - GameState.player.z;
-                if (Math.hypot(moveX, moveZ) < 0.35) {
-                    GameState.player.x = destination.x;
-                    GameState.player.z = destination.z;
-                    if (GameState.player.path.length) {
-                        GameState.player.destination = GameState.player.path.shift();
-                        moveX = GameState.player.destination.x - GameState.player.x;
-                        moveZ = GameState.player.destination.z - GameState.player.z;
-                    } else {
-                        GameState.player.destination = null;
-                        moveX = 0;
-                        moveZ = 0;
-                    }
-                }
-            }
+            const {isMoving,dirX,dirZ}=GameState.gameOver
+                ? {isMoving:false,dirX:0,dirZ:0} : GameState.advancePlayer(delta);
 
-            const isMoving = (moveX !== 0 || moveZ !== 0);
-            GameState.player.moving = isMoving;
-
-            if (isMoving && !GameState.gameOver) {
-                // Normalize isometric movement direction
-                const len = Math.hypot(moveX, moveZ);
-                const dirX = (moveX / len);
-                const dirZ = (moveZ / len);
-                const step = Math.min(GameState.player.speed * delta, Math.hypot(moveX, moveZ));
-
-                // Attempt movement with wall collision test
-                const nextX = GameState.player.x + dirX * step;
-                const nextZ = GameState.player.z + dirZ * step;
-
-                if (GameState.canMoveTo(nextX, nextZ, 0.45)) {
-                    GameState.player.x = nextX;
-                    GameState.player.z = nextZ;
-                } else {
-                    // Slide along X or Z if one direction is clear
-                    if (GameState.canMoveTo(nextX, GameState.player.z, 0.45)) {
-                        GameState.player.x = nextX;
-                    } else if (GameState.canMoveTo(GameState.player.x, nextZ, 0.45)) {
-                        GameState.player.z = nextZ;
-                    } else {
-                        // Keep the destination and automatically choose a diagonal detour.
-                        const detours = [
-                            { x: dirX - dirZ, z: dirZ + dirX },
-                            { x: dirX + dirZ, z: dirZ - dirX },
-                            { x: -dirZ, z: dirX },
-                            { x: dirZ, z: -dirX }
-                        ];
-                        detours.sort((a, b) => {
-                            const ad = Math.hypot(destination.x - (GameState.player.x + a.x * step), destination.z - (GameState.player.z + a.z * step));
-                            const bd = Math.hypot(destination.x - (GameState.player.x + b.x * step), destination.z - (GameState.player.z + b.z * step));
-                            return ad - bd;
-                        });
-                        const detour = detours.find(option => {
-                            const len = Math.hypot(option.x, option.z) || 1;
-                            return GameState.canMoveTo(GameState.player.x + option.x / len * step, GameState.player.z + option.z / len * step, 0.45);
-                        });
-                        if (detour) {
-                            const detourLen = Math.hypot(detour.x, detour.z) || 1;
-                            GameState.player.x += detour.x / detourLen * step;
-                            GameState.player.z += detour.z / detourLen * step;
-                        }
-                    }
-                }
-
+            if (isMoving) {
                 // Rotate player mesh towards movement direction
                 if (GameState.player.mesh) {
                     GameState.player.mesh.position.set(GameState.player.x, 0, GameState.player.z);

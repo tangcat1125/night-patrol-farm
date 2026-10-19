@@ -61,7 +61,13 @@ async function main() {
       clientY:(1-point.y)*window.innerHeight/2,
       bubbles:true
     }));
-    return {evidence:{...GameState.evidence}, dialogue:document.getElementById('dialogue-content').innerText, hits,
+    const dialogue = document.getElementById('dialogue-content').innerText;
+    let pages = 0;
+    while (!document.getElementById('dialogue-panel').classList.contains('hidden') && pages++ < 12) {
+      document.getElementById('btn-dialogue-ok').click();
+    }
+    if (pages >= 12) throw Error('Dialogue did not finish');
+    return {evidence:{...GameState.evidence}, dialogue, hits,
       visible:!document.getElementById('dialogue-panel').classList.contains('hidden')};
   })()`);
     await evaluate('document.getElementById("btn-dialogue-ok").click()');

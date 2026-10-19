@@ -1,0 +1,65 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
+const html=fs.readFileSync(path.join(__dirname,'../play/main.html'),'utf8');
+const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
+for(const script of scripts)new vm.Script(script);
+const base=scripts.find(s=>s.includes('const GameState ='));
+const engine=scripts.find(s=>s.includes('const GameEngine ='));
+const make=()=>{
+ const nodes={};const document={getElementById(id){return nodes[id]||= {innerText:'',classList:{contains:()=>true,add(){},remove(){}},style:{}};}};
+ const world={trapMeshes:{},wolfMeshes:{},animalMeshes:{},scene:{getObjectByName(){}},removeWolf(){},spawnWolf(){},releaseWolfFromNet(){},captureWolfInNet(){},animateWolfPounce(w,a,done){done();}};
+ const ctx=vm.createContext({document,performance:{now:()=>1000},SoundAudio:new Proxy({},{get:()=>()=>{}}),FarmWorld:world,clearInterval(){},setTimeout(fn){fn();}});
+ vm.runInContext(base+'\n'+engine+'\nglobalThis.s=GameState;globalThis.e=GameEngine;',ctx);
+ ctx.e.showToast=()=>{};ctx.e.updateHUD=()=>{};ctx.e.showEndModal=()=>{};ctx.e.triggerRandomMorningInjury=()=>{};
+ return ctx;
+};
+let c=make(),s=c.s,e=c.e;
+s.player.x=-3;s.player.z=-11;
+assert.equal(e.inspectEvidence('mud_wool'),false,'search before crow');
+s.evidence.crow_tracks=true;
+assert.equal(e.inspectEvidence('mud_wool'),true);
+assert.equal(e.inspectEvidence('mud_wool'),false,'duplicate search');
+assert.equal(e.inspectEvidence('wolf_tracks'),false,'remote search');
+for(const site of s.searchSites){const route=s.findPath(2,8,site.x,site.z,.45);assert(route.length);const end=route.at(-1);assert(Math.hypot(end.x-site.x,end.z-site.z)<2.8);}
+s.phase='Night';s.round=1;
+s.wolves=[{id:'captive',x:0,z:18,captured:true,isDead:false,entryKey:'south',entryPoint:{x:0,z:19}}];
+s.trapInventory=4;
+s.traps=[{id:'net',x:0,z:18,capturedWolfId:'captive'}];
+c.FarmWorld.trapMeshes.net={visible:true};
+e.togglePhase();
+assert.equal(s.wolves[0].captured,true,'dawn freed captive');
+assert.equal(s.wolvesKilled,0,'capture counted as kill');
+assert.equal(s.traps[0].capturedWolfId,'captive');
+s.phase='Night';s.wolves.push({id:'rescuer',x:1,z:18,captured:false,isDead:false});
+s.animals=[];e.nightAI();
+assert.equal(s.wolves[0].captured,false,'rescue failed');
+assert.equal(s.traps[0].readyRound,4);
+assert.equal(c.FarmWorld.trapMeshes.net.visible,false);
+assert(s.avoidedRoutes.some(r=>r.key==='south'));
+for(s.round=2;s.round<4;s.round++){e.restoreTraps();assert.equal(s.traps[0].readyRound,4);}
+s.round=4;e.restoreTraps();assert.equal(s.traps[0].readyRound,null);
+assert.equal(c.FarmWorld.trapMeshes.net.visible,true);
+assert.equal(s.trapInventory+s.traps.length,5,'cooldown duplicated inventory');
+s.wolves=[];s.discoveredClues={south:'known'};e.spawnNightWolves();
+assert(s.wolves.every(w=>w.entryKey!=='south'&&Math.hypot(w.x,w.z-19)>4),'reused rescued entrance');
+assert(e.wolfRoute({x:25,z:25},{x:-5,z:8}).length,'detour cannot reach farm');
+s.wolves=[{id:'detour-test',x:25,z:25,isDead:false,targetId:'pig',detour:{x:27,z:25}}];
+s.animals=[{id:'pig',x:0,z:5,status:'normal'}];s.traps=[];
+const startX=s.wolves[0].x,startZ=s.wolves[0].z;
+e.nightAI();
+assert(Math.hypot(s.wolves[0].x-startX,s.wolves[0].z-startZ)>.05,'detour stuck on one-cell waypoint');
+c=make();s=c.s;e=c.e;s.phase='Night';s.defenseActive=true;
+s.animals=[{id:'cow',x:-7,z:8.3,status:'normal'},{id:'horse',x:1,z:8.3,status:'normal'},{id:'cat',x:-11,z:6.3,status:'normal'},{id:'duck',x:5,z:6.3,status:'normal'}];
+s.wolves=[{id:'attacker',x:-7,z:11.5,isDead:false}];e.nightAI();
+assert.equal(s.wolves[0].health,1,'sentry failed to extend defense range');e.nightAI();
+assert.equal(s.wolvesKilled,1,'kick kill not counted');
+s.wolvesKilled=3;s.wolves=[{id:'last',x:-7,z:11.5,isDead:false,health:1}];e.nightAI();
+assert.equal(s.wolvesKilled,4);assert(s.gameOver,'kill did not trigger victory');
+for (const injured of [false,true]) {
+ c=make();s=c.s;e=c.e;assert.equal(s.maxRounds,4);
+ s.phase='Night';s.round=4;s.animals=[{id:'pig',status:injured?'injured':'normal',injuredRounds:0}];
+ let outcome;e.showEndModal=(win,ending)=>outcome={win,ending};
+ e.togglePhase();assert(s.gameOver,'Fourth dawn did not end game');
+ assert.equal(outcome.ending,'rounds');assert.equal(outcome.win,!injured);
+ e.tick();assert.equal(s.round,4,'Game entered a fifth round');
+}
+console.log('Defense rules passed: search gates, persistent capture, rescue, route avoidance, three-round cooldown, kicks, victory and four-round ending.');
