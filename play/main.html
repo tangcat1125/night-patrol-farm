@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <!-- 夜巡農場共同開發：tangcat1125 × OpenAI Codex -->
+    <!-- 夜巡農場共同開發：tangcat1125 × 小白（AI 農場助理） -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="author" content="tangcat1125 × OpenAI Codex">
+    <meta name="author" content="tangcat1125 × 小白（AI 農場助理）">
     <title>夜巡農場：誰在說狼來了？</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -136,6 +136,7 @@
             letter-spacing: .08em;
             text-align: center;
         }
+        .storybook-credit span { font-size: .9em; letter-spacing: .02em; }
         .end-summary {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -500,7 +501,7 @@
             </p>
             <div id="storybook-preview" class="storybook-preview">
                 <div id="storybook-pages" class="storybook-pages"></div>
-                <div class="storybook-credit">共同開發：tangcat1125 × OpenAI Codex</div>
+                <div class="storybook-credit">共同開發：tangcat1125 × 小白（AI 農場助理）<br><span>小白負責找狼、排版，偶爾也負責把羊的謊話抓出來。</span></div>
             </div>
             <div class="flex flex-wrap gap-2 justify-center mb-5">
                 <button id="btn-print-storybook" class="hidden px-4 py-2 rounded-lg font-black text-sm bg-emerald-600 hover:bg-emerald-500 text-white transition-all">列印繪本</button>
