@@ -445,6 +445,7 @@
                     <span>放置獸夾模式</span>
                     <span id="hud-trap-stock" class="text-[11px] text-amber-200 font-normal mt-0.5">剩餘：5 個</span>
                 </button>
+                <button id="btn-music-toggle" type="button" style="min-height:44px;padding:8px 12px;background:#23423a;color:#dcfce7;border:2px solid #6ee7b7;border-radius:8px;font-weight:900">♫ 背景音樂：開</button>
                 <button id="btn-end-game" type="button" style="min-height:44px;padding:8px 12px;background:#7f2929;color:#fff1e6;border:2px solid #cf7770;border-radius:8px;font-weight:900">結束遊戲</button>
                 <div class="text-[11px] text-stone-400 text-center leading-tight">
                     夜巡農場
@@ -552,6 +553,9 @@
     <script>
     const SoundAudio = {
         ctx: null,
+        music: null,
+        musicMuted: false,
+        musicSrc: "../media/Teeth_Beneath_The_Straw.mp3",
         init() {
             if (!this.ctx) {
                 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -562,6 +566,30 @@
             if (this.ctx && this.ctx.state === 'suspended') {
                 this.ctx.resume();
             }
+            if (!this.music) {
+                this.music = new Audio(this.musicSrc);
+                this.music.loop = true;
+                this.music.preload = "auto";
+                this.music.volume = 0.24;
+            }
+        },
+        startMusic() {
+            this.init();
+            if (this.musicMuted || !this.music) return Promise.resolve(false);
+            const result = this.music.play();
+            return result && typeof result.catch === "function"
+                ? result.then(() => true).catch(() => false)
+                : Promise.resolve(true);
+        },
+        toggleMusic() {
+            this.init();
+            this.musicMuted = !this.musicMuted;
+            if (this.musicMuted) {
+                this.music.pause();
+            } else {
+                this.startMusic();
+            }
+            return !this.musicMuted;
         },
         playPop() {
             this.init();
@@ -2709,7 +2737,7 @@
 
     <script>
     document.addEventListener("DOMContentLoaded", () => {
-        window.addEventListener("pointerdown", () => SoundAudio.init(), { once: true });
+        window.addEventListener("pointerdown", () => { SoundAudio.init(); SoundAudio.startMusic(); }, { once: true });
         loadDialogueJson().finally(() => { GameEngine.init(); renderLoop(); });
 
         const dialoguePanel = document.getElementById("dialogue-panel");
@@ -2727,6 +2755,7 @@
         const btnFollowNext = document.getElementById("btn-follow-next");
         const btnTrapMode = document.getElementById("btn-trap-mode");
         const btnRestart = document.getElementById("btn-restart");
+        const btnMusicToggle = document.getElementById("btn-music-toggle");
         const btnFinishReading = document.getElementById("btn-finish-reading");
         const btnPrintStorybook = document.getElementById("btn-print-storybook");
         const storybookPreview = document.getElementById("storybook-preview");
@@ -2899,6 +2928,14 @@
 
         injuredCountEl.addEventListener("click", openInjuredList);
         injuredLabelEl.addEventListener("click", openInjuredList);
+
+        btnMusicToggle.addEventListener("click", () => {
+            const enabled = SoundAudio.toggleMusic();
+            btnMusicToggle.innerText = enabled ? "♫ 背景音樂：開" : "♫ 背景音樂：關";
+            btnMusicToggle.style.background = enabled ? "#23423a" : "#3b2418";
+            btnMusicToggle.style.color = enabled ? "#dcfce7" : "#fed7aa";
+            btnMusicToggle.style.borderColor = enabled ? "#6ee7b7" : "#c08457";
+        });
 
         mobileDataToggle.addEventListener("click", () => {
             const isOpen = document.getElementById("ui-layer").classList.toggle("mobile-data-open");
