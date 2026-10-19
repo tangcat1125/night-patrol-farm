@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
+    <!-- 夜巡農場共同開發：tangcat1125 × OpenAI Codex -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="tangcat1125 × OpenAI Codex">
     <title>夜巡農場：誰在說狼來了？</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -127,6 +129,13 @@
             text-align: center;
             color: #7a3e20;
         }
+        .storybook-credit {
+            margin: 8px auto 0;
+            color: #6b4a35;
+            font-size: .78rem;
+            letter-spacing: .08em;
+            text-align: center;
+        }
         .end-summary {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -156,6 +165,48 @@
             .storybook-event { padding: 4mm 0 5mm; }
             .storybook-event-meta { font-size: .7em; }
             .storybook-art img { filter: none !important; }
+            .storybook-credit { margin-top: 3mm; font-size: 8pt; }
+        }
+        /* Mobile preview: a vertical picture-book page is easier to read and touch. */
+        @media (max-width: 700px) {
+            .storybook-preview { max-height: 72vh; padding: 8px; margin: 12px 0; }
+            .storybook-pages { gap: 14px; }
+            .storybook-page {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(190px, 46%) minmax(230px, 54%);
+                aspect-ratio: 4 / 5;
+            }
+            .storybook-art { min-height: 190px; }
+            .storybook-copy {
+                min-height: 0;
+                border-left: 0;
+                border-top: 3px solid rgba(67,45,31,.8);
+                padding: 16px 18px;
+                font-size: 17px;
+                line-height: 1.7;
+            }
+            .storybook-page-number { top: 8px; right: 8px; font-size: .78rem; }
+            .storybook-page-title { font-size: 1.12em; }
+        }
+        /* A phone may print in portrait; preserve the picture-book reading order. */
+        @media print and (orientation: portrait) {
+            @page { size: A4 portrait; margin: 9mm; }
+            .storybook-page {
+                grid-template-columns: 1fr;
+                grid-template-rows: 46% 54%;
+                aspect-ratio: 4 / 5;
+            }
+            .storybook-art { min-height: 0; }
+            .storybook-copy {
+                border-left: 0;
+                border-top: 3px solid rgba(67,45,31,.8);
+                padding: 8mm;
+                font-size: 13pt;
+                line-height: 1.5;
+            }
+            .storybook-page-title { font-size: 1.25em; margin-bottom: 5mm; }
+            .storybook-event { padding: 3mm 0 4mm; }
+            .storybook-page-number { font-size: 9pt; }
         }
         @media (max-width: 700px) {
             .end-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
@@ -449,6 +500,7 @@
             </p>
             <div id="storybook-preview" class="storybook-preview">
                 <div id="storybook-pages" class="storybook-pages"></div>
+                <div class="storybook-credit">共同開發：tangcat1125 × OpenAI Codex</div>
             </div>
             <div class="flex flex-wrap gap-2 justify-center mb-5">
                 <button id="btn-print-storybook" class="hidden px-4 py-2 rounded-lg font-black text-sm bg-emerald-600 hover:bg-emerald-500 text-white transition-all">列印繪本</button>
