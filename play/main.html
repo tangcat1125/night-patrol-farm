@@ -127,14 +127,42 @@
             text-align: center;
             color: #7a3e20;
         }
+        .end-summary {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin: 0 auto 14px;
+            max-width: 900px;
+        }
+        .end-summary-card {
+            padding: 10px 8px;
+            border: 2px solid #8d6e63;
+            border-radius: 10px;
+            background: rgba(38, 25, 18, .86);
+            color: #fff7ed;
+        }
+        .end-summary-card strong { display: block; color: #fbbf24; font-size: 1.45rem; line-height: 1.2; }
+        .end-summary-card span { display: block; margin-top: 3px; color: #d6c4b5; font-size: .78rem; }
+        .end-learning-note { margin: 0 auto 14px; max-width: 900px; padding: 10px 14px; border-left: 4px solid #38bdf8; background: rgba(8,47,73,.48); color: #e0f2fe; font-size: .95rem; line-height: 1.6; text-align: left; }
         @media print {
+            @page { size: A4 landscape; margin: 10mm; }
             body * { visibility: hidden !important; }
             #storybook-preview, #storybook-preview * { visibility: visible !important; }
             #storybook-preview { display: block !important; position: static; width: 100%; max-height: none; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible; background: white; }
             .storybook-pages { display: block; }
-            .storybook-page { width: 100%; height: 92vh; margin: 0 auto 8vh; page-break-after: always; box-shadow: none; }
-            .storybook-copy { font-size: 22px; overflow: hidden; }
+            .storybook-page { width: 100%; height: auto; aspect-ratio: 16 / 9; margin: 0 auto; page-break-after: always; break-after: page; page-break-inside: avoid; box-shadow: none; }
+            .storybook-copy { font-size: 16pt; line-height: 1.55; overflow: hidden; padding: 12mm; }
+            .storybook-page-title { font-size: 1.35em; margin-bottom: 10mm; }
+            .storybook-event { padding: 4mm 0 5mm; }
+            .storybook-event-meta { font-size: .7em; }
             .storybook-art img { filter: none !important; }
+        }
+        @media (max-width: 700px) {
+            .end-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+            .end-summary-card { padding: 7px 5px; }
+            .end-summary-card strong { font-size: 1.15rem; }
+            .end-summary-card span { font-size: .68rem; }
+            .end-learning-note { font-size: .82rem; }
         }
 
         /* Student readability pass: larger HUD text and a moonlit night that keeps the farm visible. */
@@ -366,6 +394,8 @@
     <div id="modal-endgame" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
         <div class="pixel-box max-w-6xl max-h-[94vh] overflow-y-auto w-full rounded-2xl p-6 text-center text-white border-4 border-amber-600">
             <h2 id="modal-title" class="text-2xl font-black mb-3 text-amber-400">通關結果</h2>
+            <div id="end-summary" class="end-summary"></div>
+            <div id="end-learning-note" class="end-learning-note">這次巡守的對談、判斷、救援與防守選擇，會整理成右側故事文字。</div>
             <p id="modal-desc" class="text-stone-300 text-sm leading-relaxed mb-6">
                 故事結尾敘述...
             </p>
@@ -2144,8 +2174,8 @@
                 ? GameState.storyTimeline
                 : GameState.storyLog.map(line => ({ line, type: "day", scene: "day", round: GameState.round, phase: GameState.phase }));
             const frames = [];
-            for (let i = 0; i < events.length; i += 4) {
-                const chunk = events.slice(i, i + 4);
+            for (let i = 0; i < events.length; i += 2) {
+                const chunk = events.slice(i, i + 2);
                 const lead = chunk.find(event => event.type === "ending") || chunk.find(event => event.type === "attack" || event.type === "capture" || event.type === "rescue" || event.type === "dialogue") || chunk[0];
                 const scene = lead.scene || "day";
                 const titles = {
@@ -2204,24 +2234,34 @@
         showEndModal(isWin, ending = "wolves") {
             const modal = document.getElementById("modal-endgame");
             const title = document.getElementById("modal-title");
+            const summary = document.getElementById("end-summary");
+            const learningNote = document.getElementById("end-learning-note");
             const desc = document.getElementById("modal-desc");
             const printButton = document.getElementById("btn-print-storybook");
             modal.classList.remove("hidden");
 
             this.recordStory(isWin ? "農場迎來新的早晨，大家把這段巡守記成了一本繪本。" : "迷霧籠罩農場，這段失守的夜晚也被記進了繪本。", { type: "ending", scene: "ending", title: isWin ? "平安迎來黎明" : "迷霧中的結局" });
-            const story = GameState.storyLog.slice(-18).join("\n");
+            const clueCount = Object.keys(GameState.discoveredClues).length;
+            const evidenceCount = Object.keys(GameState.evidence).length;
+            const trapsUsed = 5 - GameState.trapInventory;
+            summary.innerHTML = `
+                <div class="end-summary-card"><strong>${GameState.round}</strong><span>完成回合</span></div>
+                <div class="end-summary-card"><strong>${GameState.wolvesKilled}</strong><span>捕捉狼隻</span></div>
+                <div class="end-summary-card"><strong>${clueCount}</strong><span>查明入口</span></div>
+                <div class="end-summary-card"><strong>${evidenceCount}</strong><span>取得證據</span></div>`;
+            learningNote.innerText = "評量觀察：孩子是否能從對談找出證據、分辨謠言與事實、安排有限網夾，並在兩回合內照顧受傷動物。";
             if (isWin && ending === "rounds") {
                 title.innerText = "十回合的和平農場：全員無傷！";
                 title.className = "text-2xl font-black mb-3 text-emerald-400";
-                desc.innerText = `你讓主人與動物們平安度過十個日夜，沒有任何動物死傷。\n\n【農場故事紀錄】\n${story}`;
+                desc.innerText = `你讓主人與動物們平安度過十個日夜，沒有任何動物死傷。已使用 ${trapsUsed} 個網夾。故事歷程已整理成繪本頁。`;
             } else if (isWin) {
                 title.innerText = "大獲全勝：四頭野狼終於被制伏！";
                 title.className = "text-2xl font-black mb-3 text-emerald-400";
-                desc.innerText = `你冷靜辨別了羊的吹牛與謊言，並用網子與守備讓四頭野狼失去戰力。\n\n【農場故事紀錄】\n${story}`;
+                desc.innerText = `你冷靜辨別了羊的吹牛與謊言，並用網子與守備讓四頭野狼失去戰力。已使用 ${trapsUsed} 個網夾。故事歷程已整理成繪本頁。`;
             } else {
                 title.innerText = "最惡結局：農場在狼群陰影下淪陷";
                 title.className = "text-2xl font-black mb-3 text-rose-500";
-                desc.innerText = `群獸因羊的面子謊言陷入大恐慌，已有 ${GameState.animalsDead} 隻動物在黑夜中犧牲。\n\n【農場故事紀錄】\n${story}`;
+                desc.innerText = `群獸因羊的面子謊言陷入大恐慌，已有 ${GameState.animalsDead} 隻動物在黑夜中犧牲。這段歷程仍會整理成故事，方便回顧哪個決定改變了結果。`;
             }
             this.renderStorybookPages();
             printButton.classList.remove("hidden");
