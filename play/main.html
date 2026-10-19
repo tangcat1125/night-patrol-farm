@@ -137,6 +137,33 @@
             text-align: center;
         }
         .storybook-credit span { font-size: .9em; letter-spacing: .02em; }
+        .storybook-reading-guide {
+            max-width: 900px;
+            margin: 0 auto 14px;
+            padding: 12px 16px;
+            border: 2px solid #c18a52;
+            background: rgba(255,248,220,.94);
+            color: #4b2c20;
+            line-height: 1.65;
+            text-align: left;
+        }
+        .storybook-reading-guide strong { display: block; font-size: 1.08rem; }
+        .storybook-reading-guide small { display: block; margin-top: 3px; color: #76533b; }
+        .storybook-activity {
+            margin-top: 14px;
+            padding-top: 10px;
+            border-top: 2px solid rgba(122,62,32,.35);
+            color: #7a3e20;
+            font-family: "Noto Sans TC", sans-serif;
+            font-size: .82em;
+            line-height: 1.45;
+        }
+        .storybook-drawing-space {
+            min-height: 52px;
+            margin-top: 6px;
+            border: 2px dashed rgba(122,62,32,.42);
+            background: rgba(255,255,255,.28);
+        }
         .end-summary {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -167,6 +194,10 @@
             .storybook-event-meta { font-size: .7em; }
             .storybook-art img { filter: none !important; }
             .storybook-credit { margin-top: 3mm; font-size: 8pt; }
+            .storybook-preview { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .storybook-art, .storybook-art img { visibility: visible !important; }
+            .storybook-activity { margin-top: 4mm; padding-top: 3mm; }
+            .storybook-drawing-space { min-height: 18mm; }
         }
         /* Mobile preview: a vertical picture-book page is easier to read and touch. */
         @media (max-width: 700px) {
@@ -208,6 +239,7 @@
             .storybook-page-title { font-size: 1.25em; margin-bottom: 5mm; }
             .storybook-event { padding: 3mm 0 4mm; }
             .storybook-page-number { font-size: 9pt; }
+            .storybook-drawing-space { min-height: 16mm; }
         }
         @media (max-width: 700px) {
             .end-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
@@ -499,12 +531,17 @@
             <p id="modal-desc" class="text-stone-300 text-sm leading-relaxed mb-6">
                 故事結尾敘述...
             </p>
+            <div id="storybook-reading-guide" class="storybook-reading-guide">
+                <strong>先讀故事，再把它變成自己的繪本！</strong>
+                <small id="storybook-read-status">請先閱讀每一頁的故事文字；讀完後就能列印，留下空間寫下想法、畫出自己的結局。</small>
+            </div>
             <div id="storybook-preview" class="storybook-preview">
                 <div id="storybook-pages" class="storybook-pages"></div>
                 <div class="storybook-credit">共同開發：tangcat1125 × 小白（AI 農場助理）<br><span>小白負責找狼、排版，偶爾也負責把羊的謊話抓出來。</span></div>
             </div>
             <div class="flex flex-wrap gap-2 justify-center mb-5">
-                <button id="btn-print-storybook" class="hidden px-4 py-2 rounded-lg font-black text-sm bg-emerald-600 hover:bg-emerald-500 text-white transition-all">列印繪本</button>
+                <button id="btn-finish-reading" class="hidden px-4 py-2 rounded-lg font-black text-sm bg-sky-600 hover:bg-sky-500 text-white transition-all">我讀完故事了，準備列印</button>
+                <button id="btn-print-storybook" disabled class="hidden px-4 py-2 rounded-lg font-black text-sm bg-emerald-600 hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50 text-white transition-all">列印繪本</button>
             </div>
             <button id="btn-restart" class="px-6 py-3 rounded-lg font-black text-sm bg-amber-600 hover:bg-amber-500 text-stone-950 transition-all shadow-lg">
                 重新巡守農場
@@ -2548,6 +2585,10 @@
                     item.append(meta, document.createTextNode(event.line));
                     copy.appendChild(item);
                 });
+                const activity = document.createElement("div");
+                activity.className = "storybook-activity";
+                activity.innerHTML = "<strong>我的想法／我的畫：</strong><div class=\"storybook-drawing-space\"></div>";
+                copy.appendChild(activity);
                 page.append(art, number, copy);
                 pages.appendChild(page);
             });
@@ -2575,6 +2616,8 @@
             const learningNote = document.getElementById("end-learning-note");
             const desc = document.getElementById("modal-desc");
             const printButton = document.getElementById("btn-print-storybook");
+            const finishReadingButton = document.getElementById("btn-finish-reading");
+            const readStatus = document.getElementById("storybook-read-status");
             modal.classList.remove("hidden");
 
             if (ending !== "teacher") this.recordStory(isWin ? "農場迎來新的早晨，大家把這段巡守記成了一本繪本。" : "迷霧籠罩農場，這段失守的夜晚也被記進了繪本。", { type: "ending", scene: "ending", title: isWin ? "平安迎來黎明" : "迷霧中的結局" });
@@ -2610,7 +2653,12 @@
                 desc.innerText = `群獸因羊的面子謊言陷入大恐慌，已有 ${GameState.animalsDead} 隻動物在黑夜中犧牲。這段歷程仍會整理成故事，方便回顧哪個決定改變了結果。`;
             }
             this.renderStorybookPages();
-            printButton.classList.remove("hidden");
+            document.getElementById("storybook-preview").classList.add("visible");
+            finishReadingButton.classList.remove("hidden");
+            printButton.classList.add("hidden");
+            printButton.disabled = true;
+            finishReadingButton.disabled = false;
+            readStatus.innerText = "請先閱讀每一頁的故事文字；讀完後就能列印，留下空間寫下想法、畫出自己的結局。";
         },
 
         showToast(msg) {
@@ -2679,8 +2727,10 @@
         const btnFollowNext = document.getElementById("btn-follow-next");
         const btnTrapMode = document.getElementById("btn-trap-mode");
         const btnRestart = document.getElementById("btn-restart");
+        const btnFinishReading = document.getElementById("btn-finish-reading");
         const btnPrintStorybook = document.getElementById("btn-print-storybook");
         const storybookPreview = document.getElementById("storybook-preview");
+        const storybookReadStatus = document.getElementById("storybook-read-status");
         const injuredCountEl = document.getElementById("hud-injured-count");
         const injuredLabelEl = document.getElementById("hud-injured-label");
         const injuredListPanel = document.getElementById("injured-list-panel");
@@ -2857,14 +2907,44 @@
             SoundAudio.playPop();
         });
 
-        btnPrintStorybook.addEventListener("click", () => {
+        btnFinishReading.addEventListener("click", () => {
+            btnFinishReading.classList.add("hidden");
+            btnPrintStorybook.classList.remove("hidden");
+            btnPrintStorybook.disabled = false;
+            storybookReadStatus.innerText = "已完成閱讀！現在可以列印，並在每頁的「我的想法／我的畫」區域創作。";
+            SoundAudio.playPop();
+        });
+
+        async function waitForStorybookImages() {
+            const images = [...storybookPreview.querySelectorAll("img")];
+            await Promise.all(images.map(image => new Promise((resolve, reject) => {
+                const done = () => {
+                    if (image.decode) image.decode().catch(() => {}).finally(resolve);
+                    else resolve();
+                };
+                if (image.complete && image.naturalWidth > 0) return done();
+                image.addEventListener("load", done, { once: true });
+                image.addEventListener("error", () => reject(new Error(`繪本底圖載入失敗：${image.src}`)), { once: true });
+            })));
+        }
+
+        btnPrintStorybook.addEventListener("click", async () => {
             GameEngine.renderStorybookPages();
             storybookPreview.classList.add("visible");
             btnPrintStorybook.innerText = "正在準備列印…";
-            requestAnimationFrame(() => requestAnimationFrame(() => {
+            btnPrintStorybook.disabled = true;
+            try {
+                await waitForStorybookImages();
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
                 window.print();
+            } catch (error) {
+                console.error(error);
+                storybookReadStatus.innerText = "有一張繪本底圖尚未載入，請確認網路或重新整理後再試一次。";
+                GameEngine.showToast("繪本底圖尚未準備好，請稍候再試。 ");
+            } finally {
+                btnPrintStorybook.disabled = false;
                 btnPrintStorybook.innerText = "再次列印繪本";
-            }));
+            }
         });
 
         // Toggle Trap placement mode
